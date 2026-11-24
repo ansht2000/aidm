@@ -63,3 +63,17 @@ test('deployed: two players play a round with the real DM', async ({ users }) =>
   await shot(host, 'd-04-chronicle')
   console.log(`[deployed] chronicle: ${await host.page.getByTestId('chronicle-title').textContent()}`)
 })
+
+test('deployed: the DM writes a new adventure', async ({ users }) => {
+  test.setTimeout(240_000)
+  const [, writer] = await users(2)
+  await writer.page.goto('/home')
+  await writer.page.getByLabel('Host a new table').fill('[smoke] Writer table')
+  await writer.page.getByRole('switch').click()
+  await writer.page.getByTestId('adventure-generate').click()
+  await writer.page.getByTestId('create-table').click()
+  await expect(writer.page).toHaveURL(/\/t\/[A-Z0-9]{6}$/, { timeout: 30_000 })
+  await expect(writer.page.getByTestId('module-title')).not.toContainText('writing', { timeout: 200_000 })
+  console.log(`[deployed] adventure: ${await writer.page.getByTestId('module-title').textContent()}`)
+  if (process.env.SHOT_DIR) await writer.page.screenshot({ path: `${process.env.SHOT_DIR}/d-05-writer.png` })
+})
