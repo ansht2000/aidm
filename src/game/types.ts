@@ -174,6 +174,22 @@ export interface AdventureModule {
   targetMinutes: number
 }
 
+export const ADVENTURE_TONES = ['eerie', 'heroic', 'comic'] as const
+export const ADVENTURE_SETTINGS = ['fishing village', 'mountain monastery', 'desert ruins', 'haunted forest', 'river city'] as const
+export interface AdventureRequest {
+  tone: (typeof ADVENTURE_TONES)[number]
+  setting: (typeof ADVENTURE_SETTINGS)[number]
+}
+
+/** The `data` of the single `adventure/module` row in a table room. */
+export interface AdventureData {
+  status: 'writing' | 'ready'
+  source: 'handwritten' | 'generated' | 'fallback'
+  module: AdventureModule
+  request: AdventureRequest | null
+  error: string
+}
+
 export type Phase = 'lobby' | 'exploration' | 'rolls' | 'combat' | 'dm' | 'ended'
 export type DmStatus = 'idle' | 'queued' | 'thinking' | 'narrating' | 'error'
 
@@ -208,6 +224,8 @@ export interface GameData {
   turnsUsed: number
   outcome: string
   fakeDm: boolean
+  /** Host pressed End during a DM turn; the recap runs when the turn finishes. */
+  endRequested: boolean
 }
 
 export type LogKind = 'narration' | 'action' | 'system' | 'recap'

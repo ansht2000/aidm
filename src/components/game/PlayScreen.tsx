@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { ConfirmModal, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { useAction } from '@/lib/actions'
-import { MODULES } from '@/game/content/modules'
 import { SESSION_TARGET_MIN } from '@/game/types'
 import { Composer } from './Composer'
 import { PartyRail, PartyStrip } from './PartyRail'
@@ -53,12 +52,11 @@ function useElapsedMinutes(startedAt: number) {
 }
 
 function SceneBanner({ toolbar }: { toolbar: React.ReactNode }) {
-  const { game, table, isHost, tableId } = useTable()
+  const { game, table, isHost, tableId, module: mod } = useTable()
   const { run } = useAction()
   const [confirmEnd, setConfirmEnd] = useState(false)
   const elapsed = useElapsedMinutes(game?.startedAt ?? 0)
   if (!game) return null
-  const mod = MODULES[game.moduleId]
   const idx = Math.max(0, mod?.scenes.findIndex((s) => s.id === game.sceneId) ?? 0)
   const scene = mod?.scenes[idx]
   return (

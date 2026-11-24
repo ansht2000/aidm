@@ -5,7 +5,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery, usePresenceRoom } from 'deepspace'
-import type { CharacterData, EnemyData, GameData, LogData, RollData, TableData } from '@/game/types'
+import { DEFAULT_MODULE_ID, MODULES } from '@/game/content/modules'
+import type { AdventureData, AdventureModule, CharacterData, EnemyData, GameData, LogData, RollData, TableData } from '@/game/types'
 
 type Rec<T> = { recordId: string; data: T; createdAt: string; updatedAt: string; createdBy: string }
 
@@ -16,6 +17,9 @@ export interface TableCtx {
   isHost: boolean
   game: GameData | null
   gameUpdatedAt: string
+  /** The adventure this table runs, and whether the DM is still writing it. */
+  module: AdventureModule
+  adventure: AdventureData | null
   characters: Rec<CharacterData>[]
   enemies: Rec<EnemyData>[]
   log: Rec<LogData>[]
@@ -50,6 +54,7 @@ export function TableProvider({
   children: ReactNode
 }) {
   const gameQ = useQuery<GameData>('game')
+  const advQ = useQuery<AdventureData>('adventure')
   const charQ = useQuery<CharacterData>('characters', { orderBy: 'createdAt', orderDir: 'asc' })
   const enemyQ = useQuery<EnemyData>('enemies', { orderBy: 'createdAt', orderDir: 'asc' })
   const logQ = useQuery<LogData>('log', { orderBy: 'seq', orderDir: 'asc', limit: 600 })
@@ -64,6 +69,8 @@ export function TableProvider({
   const value = useMemo<TableCtx>(() => {
     const gameRow = gameQ.records.find((r) => r.recordId === 'state') ?? gameQ.records[0]
     const characters = charQ.records as Rec<CharacterData>[]
+    const adventure = (advQ.records[0]?.data as AdventureData | undefined) ?? null
+    const game = gameRow ? (gameRow.data as GameData) : null
     const online = new Set<string>([userId, ...peers.map((p) => p.userId)])
     const typing = new Set<string>(peers.filter((p) => p.state?.typing).map((p) => p.userId))
     return {
@@ -71,8 +78,10 @@ export function TableProvider({
       table,
       userId,
       isHost: table.data.hostId === userId,
-      game: gameRow ? (gameRow.data as GameData) : null,
+      game,
       gameUpdatedAt: gameRow?.updatedAt ?? '',
+      module: adventure?.module ?? MODULES[game?.moduleId ?? ''] ?? MODULES[DEFAULT_MODULE_ID],
+      adventure,
       characters,
       enemies: enemyQ.records as Rec<EnemyData>[],
       log: logQ.records as Rec<LogData>[],
@@ -82,9 +91,9 @@ export function TableProvider({
       typing,
       setTyping: setSelfTyping,
       nameOf,
-      ready: gameQ.status === 'ready' && charQ.status === 'ready',
+      ready: gameQ.status === 'ready' && charQ.status === 'ready' && advQ.status !== 'loading',
     }
-  }, [gameQ.records, gameQ.status, charQ.records, charQ.status, enemyQ.records, logQ.records, rollQ.records, peers, tableId, table, userId, nameOf])
+  }, [advQ.records, advQ.status, gameQ.records, gameQ.status, charQ.records, charQ.status, enemyQ.records, logQ.records, rollQ.records, peers, tableId, table, userId, nameOf])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

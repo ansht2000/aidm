@@ -23,11 +23,14 @@ function Quill() {
 
 export function Composer() {
   const t = useTable()
-  const { game, mine, characters, log, rolls, tableId, isHost, typing } = t
+  const { game, mine, characters, log, rolls, tableId, isHost, typing, gameUpdatedAt } = t
   const { run, pending } = useAction()
   const [text, setText] = useState('')
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const secondsLeft = useCountdown(game?.deadlineAt || undefined)
+  // While the DM works, tick once a second so a stalled turn can be noticed.
+  useCountdown(game?.phase === 'dm' ? Number.MAX_SAFE_INTEGER : undefined)
+  const staleMs = gameUpdatedAt ? Date.now() - Date.parse(gameUpdatedAt) : 0
 
   // Shared timer: when it hits zero, ask the server to move on.
   const tickedSeq = useRef<number | null>(null)
@@ -92,10 +95,10 @@ export function Composer() {
     <div className="border-t border-border bg-leather px-4 py-3" data-testid="composer">
       {game.phase === 'dm' ? (
         <div className="flex items-center gap-3 py-2 text-muted-foreground" data-testid="dm-status" data-status={game.dmStatus}>
-          {game.dmStatus === 'error' ? (
+          {game.dmStatus === 'error' || staleMs > 120_000 ? (
             <>
-              <span className="text-destructive">The Dungeon Master stumbled.</span>
-              {isHost ? (
+              <span className="text-destructive">{game.dmStatus === 'error' ? 'The Dungeon Master stumbled.' : 'The Dungeon Master seems lost in thought.'}</span>
+              {isHost || staleMs > 120_000 || (game.dmStatus === 'error' && staleMs > 60_000) ? (
                 <Button size="sm" variant="outline" loading={pending === 'retryDm'} onClick={() => run('retryDm', { tableId })}>
                   Ask them to try again
                 </Button>
@@ -106,7 +109,9 @@ export function Composer() {
           ) : (
             <>
               <Quill />
-              <span className="font-display text-lg italic">{game.dmStatus === 'narrating' ? 'The Dungeon Master is writing…' : 'The Dungeon Master is thinking…'}</span>
+              <span className="font-display text-lg italic">
+                {game.endRequested ? 'Finishing this turn, then writing the chronicle…' : game.dmStatus === 'narrating' ? 'The Dungeon Master is writing…' : 'The Dungeon Master is thinking…'}
+              </span>
             </>
           )}
         </div>

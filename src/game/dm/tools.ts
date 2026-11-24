@@ -13,7 +13,6 @@
 import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 import { MONSTERS } from '../content/monsters'
-import { MODULES } from '../content/modules'
 import { addLog, isAliveFn, nextSeq, patchGame, type TableSnapshot } from '../engine'
 import {
   abilityMod,
@@ -335,7 +334,7 @@ export const impl = {
   async start_combat(ctx: ToolContext, input: { encounterId: string }): Promise<Result> {
     const { snap } = ctx
     if (snap.game.combat.active) return fail('Combat is already active.')
-    const mod = MODULES[snap.game.moduleId]
+    const mod = snap.module
     const encounter = mod?.scenes.flatMap((s) => s.encounters).find((e) => e.id === input.encounterId)
     if (!encounter) {
       return fail(`Unknown encounterId. Valid: ${mod?.scenes.flatMap((s) => s.encounters.map((e) => e.id)).join(', ')}`)
@@ -395,7 +394,7 @@ export const impl = {
   },
 
   async advance_scene(ctx: ToolContext, input: { sceneId: string }): Promise<Result> {
-    const mod = MODULES[ctx.snap.game.moduleId]
+    const mod = ctx.snap.module
     const scene = mod?.scenes.find((s) => s.id === input.sceneId)
     if (!scene) return fail(`Unknown sceneId. Valid: ${mod?.scenes.map((s) => s.id).join(', ')}`)
     if (scene.id === ctx.snap.game.sceneId) return { ok: true, note: 'Already in that scene.' }

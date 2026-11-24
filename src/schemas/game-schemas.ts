@@ -58,6 +58,18 @@ export const tablesSchema: CollectionSchema = {
   },
 }
 
+/**
+ * Daily cost quota slots (app room). A slot row's (userId, day, kind, slot)
+ * is unique, so claiming slot N is atomic inside the Durable Object: parallel
+ * requests can't all squeeze under the cap. Server-written only.
+ */
+export const quotaSchema: CollectionSchema = {
+  name: 'quota',
+  columns: [text('userId', { required: true }), text('day', { required: true }), text('kind', { required: true }), num('slot')],
+  uniqueOn: ['userId', 'day', 'kind', 'slot'],
+  permissions: { '*': none, viewer: none, member: none, admin: readOnly },
+}
+
 const tableRoomPermissions: Record<string, RolePermissions> = {
   '*': none,
   viewer: none,
@@ -84,6 +96,7 @@ export const gameSchema: CollectionSchema = {
     num('turnsUsed'),
     text('outcome'),
     bool('fakeDm'),
+    bool('endRequested'),
   ],
   permissions: tableRoomPermissions,
 }
@@ -114,6 +127,8 @@ export const charactersSchema: CollectionSchema = {
     bool('ready'),
     num('init'),
   ],
+  // Two players can't hold the same hero, even if they click at once.
+  uniqueOn: ['pregenId'],
   permissions: tableRoomPermissions,
 }
 
@@ -172,9 +187,17 @@ export const rollsSchema: CollectionSchema = {
   permissions: tableRoomPermissions,
 }
 
+/** One row (`module`): the adventure this table runs — hand-written or AI-written. */
+export const adventureSchema: CollectionSchema = {
+  name: 'adventure',
+  columns: [text('status'), text('source'), json('module'), json('request'), text('error')],
+  permissions: tableRoomPermissions,
+}
+
 /** Collections that live inside a `table:<id>` room (client mounts these). */
 export const tableRoomSchemas: CollectionSchema[] = [
   gameSchema,
+  adventureSchema,
   charactersSchema,
   enemiesSchema,
   logSchema,

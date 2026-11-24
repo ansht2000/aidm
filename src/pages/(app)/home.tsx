@@ -10,7 +10,7 @@ import { Button, Input, Switch, buttonVariants } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { useAction } from '@/lib/actions'
 import { MODULES, DEFAULT_MODULE_ID } from '@/game/content/modules'
-import { MAX_SEATS, type TableData } from '@/game/types'
+import { ADVENTURE_SETTINGS, ADVENTURE_TONES, MAX_SEATS, type AdventureRequest, type TableData } from '@/game/types'
 import { SceneArt } from '@/components/game/SceneArt'
 
 type Rec = { recordId: string; data: TableData; createdAt: string }
@@ -45,6 +45,9 @@ export default function HomePage() {
   const [name, setName] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [code, setCode] = useState('')
+  const [mode, setMode] = useState<'module' | 'generate'>('module')
+  const [tone, setTone] = useState<AdventureRequest['tone']>('eerie')
+  const [setting, setSetting] = useState<AdventureRequest['setting']>('haunted forest')
   const [showAuth, setShowAuth] = useState(false)
   const { records, status } = useQuery<TableData>('tables', { orderBy: 'createdAt', orderDir: 'desc', limit: 100 })
   const tables = records as Rec[]
@@ -58,7 +61,13 @@ export default function HomePage() {
   const module = MODULES[DEFAULT_MODULE_ID]
 
   const create = async () => {
-    const out = await run<{ code: string }>('createTable', { name: name.trim() || undefined, visibility: isPublic ? 'public' : 'private', moduleId: DEFAULT_MODULE_ID, fakeDm })
+    const out = await run<{ code: string }>('createTable', {
+      name: name.trim() || undefined,
+      visibility: isPublic ? 'public' : 'private',
+      moduleId: DEFAULT_MODULE_ID,
+      generate: mode === 'generate' ? { tone, setting } : undefined,
+      fakeDm,
+    })
     if (out.success && out.data) navigate(`/t/${out.data.code}`)
   }
 
@@ -89,6 +98,53 @@ export default function HomePage() {
                 </label>
                 <Input id="table-name" placeholder="The Lantern Company" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
               </div>
+              <fieldset>
+                <legend className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">Adventure</legend>
+                <div className="grid grid-cols-2 gap-1 rounded-md border border-border p-1 text-sm" role="radiogroup">
+                  {(
+                    [
+                      ['module', module.title],
+                      ['generate', 'A new one, written by the DM'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={mode === value}
+                      data-testid={`adventure-${value}`}
+                      onClick={() => setMode(value)}
+                      className={cn('rounded-sm px-2 py-1.5 text-left leading-tight', mode === value ? 'bg-gold text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {mode === 'generate' && (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label className="text-xs text-muted-foreground">
+                      Tone
+                      <select className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm capitalize text-foreground" value={tone} onChange={(e) => setTone(e.target.value as AdventureRequest['tone'])}>
+                        {ADVENTURE_TONES.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      Setting
+                      <select className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm capitalize text-foreground" value={setting} onChange={(e) => setSetting(e.target.value as AdventureRequest['setting'])}>
+                        {ADVENTURE_SETTINGS.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </fieldset>
               <label className="flex items-center justify-between gap-3 text-sm">
                 <span>
                   List it on the tavern board

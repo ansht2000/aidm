@@ -8,7 +8,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import { MODULES } from '@/game/content/modules'
 import { healthBand } from '@/game/rules'
 import { Composer } from './Composer'
 import { HpBar, Sigil, SheetDialog } from './PartyRail'
@@ -23,11 +22,10 @@ function renderInline(text: string): string {
 }
 
 export function TabletopView({ toolbar }: { toolbar: React.ReactNode }) {
-  const { game, log, rolls, characters, enemies, online, typing, userId } = useTable()
+  const { game, log, rolls, characters, enemies, online, typing, userId, module: mod } = useTable()
   const [drawer, setDrawer] = useState(false)
   const [sheet, setSheet] = useState<string | null>(null)
 
-  const mod = game ? MODULES[game.moduleId] : undefined
   const scene = mod?.scenes.find((s) => s.id === game?.sceneId) ?? mod?.scenes[0]
 
   // The caption is the DM's latest turn: narration since the last player action.

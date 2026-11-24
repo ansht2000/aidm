@@ -174,47 +174,13 @@ export function registerRealtimeRoutes(app: Hono<AppContext>): void {
     wsRoute((env) => env.RECORD_ROOMS, undefined, recordRoomGate),
   )
 
-  app.get('/ws/yjs/:docId', async (c) => {
-    const docId = c.req.param('docId')
-    const url = new URL(c.req.url)
-    const token = url.searchParams.get('token')
-    const auth = token ? (await verifyJwt(jwtConfig(c.env), token)).result : null
-    if (!auth) return new Response('Unauthorized', { status: 401 })
-
-    const role = await resolveDocsYjsRole(c.env, docId, auth.userId)
-    if (!role) return new Response('Forbidden', { status: 403 })
-
-    const roomRequest = authenticatedRoomRequest(c.req.raw, auth, { role })
-
-    const stub = c.env.YJS_ROOMS.get(c.env.YJS_ROOMS.idFromName(docId))
-    return stub.fetch(roomRequest)
-  })
-
-  app.get(
-    '/ws/canvas/:docId',
-    wsRoute(
-      (env) => env.CANVAS_ROOMS,
-      async (auth, env) => ({ role: await resolveAppRole(env, auth.userId) }),
-    ),
-  )
+  // Inkbound uses only record rooms and presence over WebSockets. The
+  // scaffold's Yjs, canvas, cron and jobs socket routes are not registered,
+  // so clients cannot open (or spin up) those Durable Objects at all. DM
+  // jobs are enqueued server-side with enqueueJob.
 
   app.get(
     '/ws/presence/:scopeId',
     wsRoute((env) => env.PRESENCE_ROOMS, undefined, presenceGate),
-  )
-
-  app.get(
-    '/ws/cron/:roomId',
-    wsRoute(
-      (env) => env.CRON_ROOMS,
-      // Authenticated users get their current app role. Anonymous connections
-      // have no role and CronRoom enforces them as read-only viewers.
-      async (auth, env) => ({ role: await resolveAppRole(env, auth.userId) }),
-    ),
-  )
-
-  app.get(
-    '/ws/jobs/:roomId',
-    wsRoute((env) => env.JOB_ROOMS),
   )
 }

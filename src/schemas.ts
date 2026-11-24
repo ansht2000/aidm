@@ -12,10 +12,10 @@
 import type { CollectionSchema } from 'deepspace/schema'
 import { usersSchema } from './schemas/users-schema'
 import { settingsSchema } from './schemas/admin-schema'
-import { tablesSchema, tableRoomSchemas } from './schemas/game-schemas'
+import { quotaSchema, tablesSchema, tableRoomSchemas } from './schemas/game-schemas'
 
 export { tableRoomSchemas }
 
-export const appSchemas: CollectionSchema[] = [usersSchema, settingsSchema, tablesSchema]
+export const appSchemas: CollectionSchema[] = [usersSchema, settingsSchema, tablesSchema, quotaSchema]
 
 export const schemas: CollectionSchema[] = [...appSchemas, ...tableRoomSchemas]

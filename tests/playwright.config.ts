@@ -22,6 +22,9 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
   retries: 0,
+  // Multi-user specs sign in several browsers each; two workers keep the
+  // cold dev server from timing out the first specs.
+  workers: 2,
   use: {
     baseURL: BASE_URL,
     headless: true,

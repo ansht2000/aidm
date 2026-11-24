@@ -36,7 +36,8 @@ function PregenCard({ p, takenBy, selected, onPick }: { p: Pregen; takenBy: stri
 }
 
 export function TableLobby() {
-  const { table, characters, mine, isHost, tableId, userId, nameOf, online } = useTable()
+  const { table, characters, mine, isHost, tableId, userId, nameOf, online, module, adventure } = useTable()
+  const writing = adventure?.status === 'writing'
   const { run, pending } = useAction()
   const { success } = useToast()
   const [pick, setPick] = useState<string | null>(mine?.data.pregenId ?? null)
@@ -72,8 +73,12 @@ export function TableLobby() {
     <div className="mx-auto max-w-6xl px-4 py-8" data-testid="table-lobby">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-gold">{table.data.moduleTitle}</p>
+          <p className="font-display text-xs uppercase tracking-[0.3em] text-gold" data-testid="module-title">
+            {writing ? 'The Dungeon Master is writing a new adventure…' : module.title}
+          </p>
           <h1 className="font-display text-4xl font-semibold">{table.data.name}</h1>
+          {!writing && <p className="mt-2 max-w-2xl font-serif text-lg italic text-muted-foreground">{module.pitch}</p>}
+          {adventure?.error && <p className="mt-2 text-sm text-destructive">{adventure.error}</p>}
           <p className="mt-1 text-sm text-muted-foreground">
             Hosted by {table.data.hostName} · {table.data.visibility === 'public' ? 'Listed on the tavern board' : 'Invite only'} · about 25 minutes
           </p>
@@ -201,14 +206,14 @@ export function TableLobby() {
                   className="w-full"
                   size="lg"
                   data-testid="start-session"
-                  disabled={!allReady}
+                  disabled={!allReady || writing}
                   loading={pending === 'startGame'}
                   onClick={() => run('startGame', { tableId })}
                 >
                   Begin the tale
                 </Button>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  {allReady ? 'Everyone with a hero is ready.' : 'Starts when every hero is marked ready.'}
+                  {writing ? 'Waiting for the adventure to be written (about 20 seconds).' : allReady ? 'Everyone with a hero is ready.' : 'Starts when every hero is marked ready.'}
                 </p>
               </>
             ) : (

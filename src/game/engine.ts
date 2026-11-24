@@ -14,11 +14,14 @@
 import { enqueueJob } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { roomTools, tableRoomId, type RecordData, type RoomTools } from '../server/rooms'
+import { DEFAULT_MODULE_ID, MODULES } from './content/modules'
 import {
   COMBAT_TURN_SECONDS,
   MAX_DM_TURNS,
   ROLL_SECONDS,
   ROUND_SECONDS,
+  type AdventureData,
+  type AdventureModule,
   type CharacterData,
   type CombatState,
   type Combatant,
@@ -29,6 +32,7 @@ import {
 } from './types'
 
 export const GAME_ROW = 'state'
+export const ADVENTURE_ROW = 'module'
 
 export type DmReason = 'opening' | 'round' | 'rolls' | 'combat' | 'finale'
 
@@ -41,6 +45,7 @@ export interface DmJobPayload {
 export interface TableSnapshot {
   tools: RoomTools
   game: GameData
+  module: AdventureModule
   characters: RecordData<CharacterData>[]
   enemies: RecordData<EnemyData>[]
 }
@@ -64,18 +69,22 @@ export function initialGame(hostId: string, moduleId: string, sceneId: string, f
     turnsUsed: 0,
     outcome: '',
     fakeDm,
+    endRequested: false,
   }
 }
 
 export async function loadTable(env: Env, tableId: string): Promise<TableSnapshot | null> {
   const tools = roomTools(env, tableRoomId(tableId))
-  const [gameRow, characters, enemies] = await Promise.all([
+  const [gameRow, adventure, characters, enemies] = await Promise.all([
     tools.get<GameData>('game', GAME_ROW),
+    tools.get<AdventureData>('adventure', ADVENTURE_ROW),
     tools.query<CharacterData>('characters', { limit: 10 }),
     tools.query<EnemyData>('enemies', { limit: 30 }),
   ])
   if (!gameRow) return null
-  return { tools, game: normalizeGame(gameRow.data), characters, enemies }
+  const game = normalizeGame(gameRow.data)
+  const module = adventure?.data.module ?? MODULES[game.moduleId] ?? MODULES[DEFAULT_MODULE_ID]
+  return { tools, game, module, characters, enemies }
 }
 
 function normalizeGame(g: Partial<GameData>): GameData {
@@ -215,8 +224,8 @@ export async function afterDmTurn(env: Env, tableId: string, opts: { endRequeste
   if (!snap) return
   const living = livingCharacters(snap)
 
-  if (opts.endRequested || living.length === 0) {
-    const outcome = opts.endRequested ?? 'defeat'
+  if (opts.endRequested || snap.game.endRequested || living.length === 0) {
+    const outcome = opts.endRequested ?? (snap.game.endRequested ? 'unfinished' : 'defeat')
     await queueRecap(env, tableId, snap, outcome)
     return
   }

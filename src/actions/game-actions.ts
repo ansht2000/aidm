@@ -6,11 +6,13 @@
  * writes. Inputs are bounded; ids are validated; nothing trusts the client.
  */
 
+import { enqueueJob } from 'deepspace/worker'
 import type { ActionHandler, ActionResult } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { PREGEN_BY_ID, SIGILS } from '../game/content/pregens'
 import { DEFAULT_MODULE_ID, MODULES } from '../game/content/modules'
 import {
+  ADVENTURE_ROW,
   GAME_ROW,
   addLog,
   currentCombatant,
@@ -24,8 +26,13 @@ import {
 } from '../game/engine'
 import { cryptoRng, resolveRoll } from '../game/rules'
 import {
+  ADVENTURE_SETTINGS,
+  ADVENTURE_TONES,
   MAX_ACTION_CHARS,
+  MAX_DM_TURNS,
   MAX_SEATS,
+  type AdventureData,
+  type AdventureRequest,
   type CharacterData,
   type GameData,
   type LogData,
@@ -80,6 +87,25 @@ function myCharacter(snap: TableSnapshot, userId: string) {
   return snap.characters.find((c) => c.data.userId === userId) ?? null
 }
 
+/**
+ * Claim one of `max` daily slots for `kind`. Each slot is a row whose
+ * (userId, day, kind, slot) tuple is unique in the Durable Object, so
+ * concurrent requests cannot all pass the cap.
+ */
+async function claimQuota(env: Env, userId: string, kind: 'table' | 'adventure', max: number): Promise<boolean> {
+  const app = roomTools(env, appRoomId(env))
+  const day = new Date().toISOString().slice(0, 10)
+  for (let slot = 0; slot < max; slot++) {
+    try {
+      await app.create('quota', { userId, day, kind, slot })
+      return true
+    } catch (e) {
+      if (!/duplicate|exists/i.test(String(e))) throw e
+    }
+  }
+  return false
+}
+
 async function displayName(env: Env, userId: string): Promise<string> {
   const row = await roomTools(env, appRoomId(env)).get<{ name?: string }>('users', userId)
   return str(row?.data.name ?? '', 40) || 'Adventurer'
@@ -92,19 +118,31 @@ async function displayName(env: Env, userId: string): Promise<string> {
 export const createTable: Handler = action(async ({ userId, params, env }) => {
   const name = str(params.name, 60) || 'A table in the fog'
   const visibility = params.visibility === 'private' ? 'private' : 'public'
-  const moduleId = typeof params.moduleId === 'string' && MODULES[params.moduleId] ? params.moduleId : DEFAULT_MODULE_ID
   const fakeDm = params.fakeDm === true && env.ALLOW_DEBUG_ROUTES === 'true'
+  // Owner and local dev are exempt; tests pass enforceQuota to exercise the caps locally.
+  const exempt = userId === env.OWNER_USER_ID || (env.ALLOW_DEBUG_ROUTES === 'true' && params.enforceQuota !== true)
   const app = roomTools(env, appRoomId(env))
 
-  // Cost cap: 3 new tables per user per day (owner and local dev exempt).
-  if (userId !== env.OWNER_USER_ID && env.ALLOW_DEBUG_ROUTES !== 'true') {
-    const mine = await app.query<TableData>('tables', { where: { hostId: userId }, orderBy: 'createdAt', orderDir: 'desc', limit: 10 })
-    const recent = mine.filter((t) => Date.now() - Date.parse(t.createdAt) < 24 * 3600_000)
-    if (recent.length >= 3) throw new UserError('You can host up to 3 tables a day. Join an open table instead!')
+  // AI-written adventure? Tone and setting come from fixed lists only.
+  const gen = params.generate as Partial<AdventureRequest> | undefined
+  const request: AdventureRequest | null =
+    gen && (ADVENTURE_TONES as readonly string[]).includes(String(gen.tone)) && (ADVENTURE_SETTINGS as readonly string[]).includes(String(gen.setting))
+      ? { tone: gen.tone as AdventureRequest['tone'], setting: gen.setting as AdventureRequest['setting'] }
+      : null
+  if (gen && !request) throw new UserError('Pick a tone and a setting for the new adventure.')
+
+  // Cost caps (owner and local dev exempt): 3 tables and 2 AI-written
+  // adventures per user per UTC day, claimed atomically.
+  if (!exempt) {
+    if (!(await claimQuota(env, userId, 'table', 3))) throw new UserError('You can host up to 3 tables a day. Join an open table instead!')
+    if (request && !(await claimQuota(env, userId, 'adventure', 2))) {
+      throw new UserError('You can have the DM write 2 new adventures a day. Try The Bell Beneath the Marsh!')
+    }
   }
 
+  const moduleId = request ? 'generated' : typeof params.moduleId === 'string' && MODULES[params.moduleId] ? params.moduleId : DEFAULT_MODULE_ID
+  const base = MODULES[request ? DEFAULT_MODULE_ID : moduleId]
   const tableId = newId(16)
-  const module = MODULES[moduleId]
   let code = newInviteCode()
   const row: TableData = {
     code,
@@ -114,7 +152,7 @@ export const createTable: Handler = action(async ({ userId, params, env }) => {
     status: 'lobby',
     visibility,
     moduleId,
-    moduleTitle: module.title,
+    moduleTitle: request ? 'A new adventure (being written)' : base.title,
     playerIds: [userId],
     seatsTaken: 1,
     recap: null,
@@ -131,7 +169,15 @@ export const createTable: Handler = action(async ({ userId, params, env }) => {
   }
 
   const tools = roomTools(env, tableRoomId(tableId))
-  await tools.create<GameData>('game', initialGame(userId, moduleId, module.scenes[0].id, fakeDm), GAME_ROW)
+  await tools.create<GameData>('game', initialGame(userId, moduleId, base.scenes[0].id, fakeDm), GAME_ROW)
+  await tools.create<AdventureData>(
+    'adventure',
+    { status: request ? 'writing' : 'ready', source: 'handwritten', module: base, request, error: '' },
+    ADVENTURE_ROW,
+  )
+  if (request) {
+    await enqueueJob(env.JOB_ROOMS, tableRoomId(tableId), 'write-adventure', { tableId, request }, { maxAttempts: 1 })
+  }
   return ok({ tableId, code })
 })
 
@@ -220,8 +266,10 @@ export const startGame: Handler = action(async ({ userId, params, env }) => {
   if (snap.game.phase !== 'lobby') throw new UserError('The session already started.')
   if (snap.characters.length === 0) throw new UserError('At least one player needs a hero.')
   if (snap.characters.some((c) => !c.data.ready)) throw new UserError('Waiting for every hero to be marked ready.')
+  const adventure = await snap.tools.get<AdventureData>('adventure', ADVENTURE_ROW)
+  if (adventure && adventure.data.status !== 'ready') throw new UserError('The DM is still writing your adventure.')
 
-  const module = MODULES[snap.game.moduleId]
+  const module = snap.module
   await patchGame(snap.tools, { startedAt: Date.now(), sceneId: module.scenes[0].id, round: 0 })
   snap.game.startedAt = Date.now()
   await roomTools(env, appRoomId(env)).update<TableData>('tables', tableId, { status: 'playing' })
@@ -344,17 +392,22 @@ export const hostAdvance: Handler = action(async ({ userId, params, env }) => {
 
 export const retryDm: Handler = action(async ({ userId, params, env }) => {
   const tableId = requireTableId(params)
-  const { snap } = await requireHost(env, tableId, userId)
+  const { table, snap } = await requireSeat(env, tableId, userId)
   const gameRow = await snap.tools.get<GameData>('game', GAME_ROW)
   const staleMs = gameRow ? Date.now() - Date.parse(gameRow.updatedAt) : 0
-  const stuck = snap.game.dmStatus === 'error' || (['queued', 'thinking', 'narrating'].includes(snap.game.dmStatus) && staleMs > 120_000)
-  if (!stuck) throw new UserError('The DM is still working.')
-  const reason = snap.game.dmReason
-  if (reason === 'recap') {
-    await queueRecap(env, tableId, snap, snap.game.outcome || 'unfinished')
-  } else {
-    await queueDm(env, tableId, snap, (['opening', 'round', 'rolls', 'combat', 'finale'] as const).find((r) => r === reason) ?? 'round')
+  const stalled = ['queued', 'thinking', 'narrating'].includes(snap.game.dmStatus) && staleMs > 120_000
+  const errored = snap.game.dmStatus === 'error'
+  // The host can retry a failed turn; anyone seated can unstick a stalled one.
+  if (!stalled && !(errored && (table.data.hostId === userId || staleMs > 60_000))) {
+    throw new UserError(errored ? 'Only the host can retry right now.' : 'The DM is still working.')
   }
+  // Every attempt counts toward the turn budget (see runDmTurn); past it, only the chronicle remains.
+  if (snap.game.turnsUsed >= MAX_DM_TURNS + 10 || snap.game.dmReason === 'recap' || snap.game.endRequested) {
+    await queueRecap(env, tableId, snap, snap.game.outcome || 'unfinished')
+    return ok({ retried: 'recap' })
+  }
+  const reason = (['opening', 'round', 'rolls', 'combat', 'finale'] as const).find((r) => r === snap.game.dmReason) ?? 'round'
+  await queueDm(env, tableId, snap, reason)
   return ok({ retried: true })
 })
 
@@ -366,6 +419,11 @@ export const endGame: Handler = action(async ({ userId, params, env }) => {
     await patchGame(snap.tools, { phase: 'ended' })
     await roomTools(env, appRoomId(env)).update<TableData>('tables', tableId, { status: 'ended' })
     return ok({ ended: true })
+  }
+  if (snap.game.phase === 'dm' && snap.game.dmStatus !== 'error') {
+    // A DM turn is in flight; the engine writes the chronicle when it finishes.
+    await patchGame(snap.tools, { endRequested: true })
+    return ok({ ending: true })
   }
   await queueRecap(env, tableId, snap, 'unfinished')
   return ok({ ending: true })

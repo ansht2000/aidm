@@ -39,7 +39,10 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
   const snap = await loadTable(env, payload.tableId)
   if (!snap || !isCurrent(snap, payload)) return { skipped: 'stale' }
 
-  await patchGame(snap.tools, { dmStatus: 'thinking' })
+  // Count the attempt before calling the model, so failed or retried turns
+  // still spend the table's turn budget.
+  snap.game.turnsUsed += 1
+  await patchGame(snap.tools, { dmStatus: 'thinking', turnsUsed: snap.game.turnsUsed })
   const writer = new NarrationWriter(snap.tools, snap.game.round)
   const toolCtx: ToolContext = { snap, writer, endRequested: null, rollsRequested: false, stagedRolls: [], stagedNotes: [] }
   const started = Date.now()
@@ -56,7 +59,7 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
         effort: 'medium',
         maxToolCalls: 14,
         maxOutputTokens: 4000,
-        instructions: systemPrompt(snap.game.moduleId),
+        instructions: systemPrompt(snap.module),
         messages: [{ role: 'user', content: turnMessage({ snap, reason: payload.reason, log, rolls }) }],
         tools: buildAiTools(toolCtx),
         abortSignal: signal,
@@ -92,7 +95,7 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
     return { error: message }
   }
 
-  await patchGame(snap.tools, { turnsUsed: snap.game.turnsUsed + 1, dmStatus: 'idle' })
+  await patchGame(snap.tools, { dmStatus: 'idle' })
   console.info(`[dm] turn ok table=${payload.tableId} reason=${payload.reason} ms=${Date.now() - started}`)
 
   const endRequested = toolCtx.endRequested ?? (payload.reason === 'finale' ? 'victory' : null)
