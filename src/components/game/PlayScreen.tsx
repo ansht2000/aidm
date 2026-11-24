@@ -1,16 +1,50 @@
 /** The in-session screen: scene banner, story log, composer, party rail. */
 
 import { useState } from 'react'
-import { ConfirmModal } from '@/components/ui'
+import { ConfirmModal, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { useAction } from '@/lib/actions'
 import { MODULES } from '@/game/content/modules'
 import { SESSION_TARGET_MIN } from '@/game/types'
 import { Composer } from './Composer'
-import { PartyRail } from './PartyRail'
+import { PartyRail, PartyStrip } from './PartyRail'
 import { SceneArt } from './SceneArt'
 import { StoryLog } from './StoryLog'
+import { TabletopView } from './TabletopView'
 import { useCountdown, useTable } from './TableContext'
+
+type View = 'story' | 'tabletop'
+const VIEW_KEY = 'inkbound:view'
+
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'tabletop' ? 'tabletop' : 'story'
+  } catch {
+    return 'story'
+  }
+}
+
+function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  const base = 'px-2.5 py-1 text-xs transition-colors'
+  return (
+    <div className="flex overflow-hidden rounded-sm border border-border bg-background/70 backdrop-blur" role="group" aria-label="Table view">
+      <button className={cn(base, view === 'story' ? 'bg-gold text-primary-foreground' : 'text-parchment-deep hover:text-parchment')} aria-pressed={view === 'story'} onClick={() => onChange('story')}>
+        Story
+      </button>
+      <Tooltip>
+        <TooltipTrigger
+          data-testid="tabletop-toggle"
+          className={cn(base, view === 'tabletop' ? 'bg-gold text-primary-foreground' : 'text-parchment-deep hover:text-parchment')}
+          aria-pressed={view === 'tabletop'}
+          onClick={() => onChange('tabletop')}
+        >
+          Tabletop
+        </TooltipTrigger>
+        <TooltipContent>More cinematic, but harder to read long narration.</TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
 
 function useElapsedMinutes(startedAt: number) {
   // Re-render every 15 s; countdown hook ticks while a deadline is set.
@@ -18,7 +52,7 @@ function useElapsedMinutes(startedAt: number) {
   return startedAt ? Math.floor((Date.now() - startedAt) / 60000) : 0
 }
 
-function SceneBanner() {
+function SceneBanner({ toolbar }: { toolbar: React.ReactNode }) {
   const { game, table, isHost, tableId } = useTable()
   const { run } = useAction()
   const [confirmEnd, setConfirmEnd] = useState(false)
@@ -41,6 +75,7 @@ function SceneBanner() {
               {elapsed} / ~{SESSION_TARGET_MIN} min
             </span>
             <span className="hidden sm:inline">{table.data.name}</span>
+            {toolbar}
             {isHost && game.phase !== 'ended' && (
               <button className="underline-offset-2 hover:text-parchment hover:underline" onClick={() => setConfirmEnd(true)}>
                 End session
@@ -94,15 +129,35 @@ function InitiativeBar() {
 }
 
 export function PlayScreen() {
+  const [view, setViewState] = useState<View>(readView)
+  const setView = (v: View) => {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* per-viewer convenience only */
+    }
+  }
+  const toggle = <ViewToggle view={view} onChange={setView} />
+  if (view === 'tabletop') {
+    return (
+      <div className="h-full min-h-0" data-testid="play-screen">
+        <TabletopView toolbar={toggle} />
+      </div>
+    )
+  }
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row" data-testid="play-screen">
       <div className="flex min-h-0 flex-1 flex-col">
-        <SceneBanner />
+        <SceneBanner toolbar={toggle} />
+        <div className="shrink-0 border-b border-border bg-shell lg:hidden">
+          <PartyStrip />
+        </div>
         <StoryLog className="min-h-0 flex-1" />
         <InitiativeBar />
         <Composer />
       </div>
-      <div className="max-h-[40vh] shrink-0 border-t border-border bg-shell lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
+      <div className="hidden shrink-0 border-l border-border bg-shell lg:block lg:w-80">
         <PartyRail />
       </div>
     </div>

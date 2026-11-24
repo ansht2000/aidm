@@ -4,7 +4,7 @@
  * (`table:<tableId>`) and renders the phase-appropriate screen.
  */
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { RecordScope, useAuth, useQuery, useUserLookup } from 'deepspace'
 import { Button, buttonVariants } from '@/components/ui'
@@ -44,6 +44,10 @@ export default function TablePage() {
   const { getName } = useUserLookup()
   const nameOf = useCallback((id: string) => getName(id) ?? 'Adventurer', [getName])
   const table = records[0]
+  const seatedRef = useRef(false)
+  useEffect(() => {
+    seatedRef.current = !!(table && userId && table.data.playerIds.includes(userId))
+  }, [table, userId])
 
   if (status === 'loading' || !userId) {
     return <div className="flex h-full items-center justify-center font-display text-lg italic text-muted-foreground">Finding the table…</div>
@@ -74,7 +78,11 @@ export default function TablePage() {
               const out = await run('joinTable', { code: upper })
               // A private table only becomes visible once you are seated; if the
               // live query has not picked it up shortly, reload to resubscribe.
-              if (out.success && !table) setTimeout(() => window.location.reload(), 1200)
+              if (out.success) {
+                setTimeout(() => {
+                  if (!seatedRef.current) window.location.reload()
+                }, 2500)
+              }
             }}
           >
             Take a seat

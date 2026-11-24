@@ -57,6 +57,20 @@ test('two players run a session with the scripted DM', async ({ users }) => {
     await expect(u.page.getByTestId('narration').first()).toContainText('Fog presses', { timeout: 30_000 })
   }
 
+  // The guest switches to the tabletop view (tooltip explains the trade-off),
+  // sees the same narration as a caption, then switches back.
+  await guest.page.getByTestId('tabletop-toggle').hover()
+  if (process.env.SHOT_DIR) {
+    await guest.page.waitForTimeout(800)
+    await guest.page.screenshot({ path: `${process.env.SHOT_DIR}/tooltip.png` })
+  }
+  await expect(guest.page.getByText('More cinematic, but harder to read long narration.')).toBeVisible({ timeout: 5_000 })
+  await guest.page.getByTestId('tabletop-toggle').click()
+  await expect(guest.page.getByTestId('tabletop-caption')).toContainText('Fog presses', { timeout: 10_000 })
+  if (process.env.SHOT_DIR) await guest.page.screenshot({ path: `${process.env.SHOT_DIR}/tabletop.png` })
+  await guest.page.getByRole('button', { name: 'Story', exact: true }).click()
+  await expect(guest.page.getByTestId('story-log')).toBeVisible()
+
   // Round 1: both act; the DM asks one of them for an Insight roll.
   await act(host, 'I ask the miller when he last saw Elsie.')
   await expect(guest.page.getByTestId('story-log')).toContainText('I ask the miller', { timeout: 15_000 })

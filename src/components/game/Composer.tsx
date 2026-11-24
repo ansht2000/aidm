@@ -164,7 +164,17 @@ export function Composer() {
         </form>
       ) : (
         <div className="flex items-center gap-3 py-2 text-muted-foreground">
-          <span>{mine && mine.data.hp <= 0 ? `${mine.data.name} is unconscious. Your allies can still save you.` : !mine ? 'You are watching this tale.' : 'Your action is in.'}</span>
+          <span>
+            {mine && mine.data.hp <= 0
+              ? `${mine.data.name} is unconscious. Your allies can still save you.`
+              : !mine
+                ? 'You are watching this tale.'
+                : game.phase === 'rolls'
+                  ? `Waiting for ${pendingRollers.join(', ')} to roll.`
+                  : game.phase === 'combat'
+                    ? `Waiting for ${current?.data.name ?? 'the next combatant'}.`
+                    : 'Your action is in.'}
+          </span>
           <Timer seconds={secondsLeft} />
         </div>
       )}

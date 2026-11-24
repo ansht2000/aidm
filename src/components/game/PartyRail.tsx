@@ -123,6 +123,43 @@ export function PartyRail() {
   )
 }
 
+/** Phones: a one-line strip of party chips; tap one for the full sheet. */
+export function PartyStrip() {
+  const { characters, enemies, game, online, userId } = useTable()
+  const [open, setOpen] = useState<string | null>(null)
+  const selected = characters.find((c) => c.recordId === open)
+  const foes = game?.combat.active ? enemies.filter((e) => e.data.status === 'active') : []
+  return (
+    <div className="flex gap-2 overflow-x-auto px-3 py-2" aria-label="Party">
+      {characters.map((c) => (
+        <button
+          key={c.recordId}
+          onClick={() => setOpen(c.recordId)}
+          className={cn('flex shrink-0 items-center gap-2 rounded-md border bg-card px-2 py-1.5', c.data.userId === userId ? 'border-gold/60' : 'border-border', c.data.hp <= 0 && 'opacity-60')}
+        >
+          <Sigil name={c.data.name} sigil={c.data.sigil} className="h-7 w-7 text-sm" />
+          <span className="text-left leading-tight">
+            <span className="flex items-center gap-1 text-sm font-medium">
+              {c.data.name.split(' ')[0]}
+              <span className={cn('h-1.5 w-1.5 rounded-full', online.has(c.data.userId) ? 'bg-success' : 'bg-muted-foreground/40')} />
+            </span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {c.data.hp}/{c.data.maxHp}
+            </span>
+          </span>
+        </button>
+      ))}
+      {foes.map((e) => (
+        <span key={e.recordId} className="flex shrink-0 items-center rounded-md border border-destructive/50 px-2 py-1.5 text-xs">
+          <span className="mr-1.5 text-destructive">{e.data.name}</span>
+          <span className="capitalize text-muted-foreground">{healthBand(e.data.hp, e.data.maxHp)}</span>
+        </span>
+      ))}
+      {selected && <SheetDialog c={selected} onClose={() => setOpen(null)} />}
+    </div>
+  )
+}
+
 export function SheetDialog({ c, onClose }: { c: Rec<CharacterData>; onClose: () => void }) {
   const d = c.data
   return (
