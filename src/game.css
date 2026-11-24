@@ -1,0 +1,317 @@
+/*
+ * Inkbound game surfaces: parchment pages, rubrication, dice, and the
+ * hand-built CSS/SVG scenes. All motion respects prefers-reduced-motion.
+ */
+
+/* ── Parchment page ─────────────────────────────────────────────────────── */
+.parchment {
+  background-color: var(--color-parchment);
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 250, 235, 0.55), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(120, 90, 50, 0.16), transparent 60%),
+    radial-gradient(ellipse at 0% 100%, rgba(120, 90, 50, 0.12), transparent 50%);
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 1px rgba(110, 85, 50, 0.25),
+    inset 0 0 60px rgba(120, 90, 50, 0.18);
+}
+
+.parchment ::selection {
+  background: var(--color-gold-bright);
+  color: var(--color-ink);
+}
+
+.narration {
+  font-family: var(--font-serif);
+  font-size: 1.14rem;
+  line-height: 1.62;
+  color: var(--color-ink);
+  text-wrap: pretty;
+}
+
+.narration.dropcap::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 3.4em;
+  line-height: 0.82;
+  padding: 0.1em 0.12em 0 0.06em;
+  margin: 0.04em 0.12em 0 0;
+  color: var(--color-oxblood);
+  text-shadow: 1px 1px 0 var(--color-gold);
+}
+
+.quill-caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  border-left: 2px solid var(--color-oxblood);
+  animation: caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.rubric {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--color-oxblood);
+}
+
+.fleuron {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-ink-faint);
+}
+.fleuron::before,
+.fleuron::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-parchment-edge), transparent);
+}
+
+.gilt-border {
+  border: 1px solid var(--color-gold);
+  box-shadow:
+    0 0 0 3px var(--color-leather),
+    0 0 0 4px rgba(201, 162, 76, 0.45);
+}
+
+/* ── Sigils (character colours) ─────────────────────────────────────────── */
+.sigil-oxblood { --sigil: var(--color-sigil-oxblood); }
+.sigil-moss { --sigil: var(--color-sigil-moss); }
+.sigil-lapis { --sigil: var(--color-sigil-lapis); }
+.sigil-gold { --sigil: var(--color-sigil-gold); }
+.sigil-fern { --sigil: var(--color-sigil-fern); }
+.sigil-amethyst { --sigil: var(--color-sigil-amethyst); }
+.sigil-ember { --sigil: var(--color-sigil-ember); }
+.sigil-slate { --sigil: var(--color-sigil-slate); }
+
+.sigil-badge {
+  background: var(--sigil, var(--color-sigil-slate));
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-weight: 700;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 240, 200, 0.35),
+    0 0 0 1px var(--color-gold);
+}
+.sigil-text { color: var(--sigil, var(--color-ink)); }
+.sigil-rule { border-color: var(--sigil, var(--color-ink-faint)); }
+
+/* ── HP bar ─────────────────────────────────────────────────────────────── */
+.hp-track {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.hp-fill {
+  background: linear-gradient(90deg, var(--color-oxblood), #b5503a);
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.hp-fill.healthy {
+  background: linear-gradient(90deg, #4c6b38, #6f8f4a);
+}
+
+/* ── d20 ────────────────────────────────────────────────────────────────── */
+.d20 {
+  width: 2.6rem;
+  height: 2.6rem;
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  background: linear-gradient(160deg, var(--color-oxblood), #5c1d15);
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  display: grid;
+  place-items: center;
+}
+.d20.crit {
+  background: linear-gradient(160deg, var(--color-gold-bright), var(--color-gold));
+  color: var(--color-ink);
+}
+.d20.fumble {
+  background: linear-gradient(160deg, #3d352c, #1f1a14);
+}
+.d20.rolling {
+  animation: d20-tumble 700ms cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+@keyframes d20-tumble {
+  0% { transform: rotate(-200deg) scale(0.4); opacity: 0; }
+  60% { transform: rotate(20deg) scale(1.15); opacity: 1; }
+  100% { transform: rotate(0) scale(1); }
+}
+.d20.waiting {
+  background: linear-gradient(160deg, #3a3025, #241d16);
+  animation: d20-pulse 1.6s ease-in-out infinite;
+}
+@keyframes d20-pulse {
+  50% { filter: brightness(1.35); }
+}
+
+/* ── Scenes ─────────────────────────────────────────────────────────────── */
+.scene {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.scene > * { position: absolute; inset: 0; }
+.scene svg { width: 100%; height: 100%; }
+.scene .scene-vignette {
+  background: radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0, 0, 0, 0.65) 100%);
+  z-index: 5;
+}
+
+/* tavern: warm interior, rain at the window, embers rising */
+.scene-tavern {
+  background:
+    radial-gradient(ellipse at 30% 75%, rgba(230, 150, 60, 0.55), transparent 45%),
+    radial-gradient(ellipse at 75% 30%, rgba(200, 120, 50, 0.25), transparent 40%),
+    linear-gradient(180deg, #2a1a10 0%, #3b2414 55%, #1d120a 100%);
+}
+.scene-tavern .s-silhouette { color: #140c07; }
+.scene-tavern .s-window { color: #3a4a5c; }
+.scene-tavern .s-glow { color: #f2b55a; }
+
+/* marsh: layered fog over reeds, a distant bell tower */
+.scene-marsh {
+  background:
+    radial-gradient(ellipse at 70% 30%, rgba(200, 210, 200, 0.35), transparent 50%),
+    linear-gradient(180deg, #46524e 0%, #56635c 40%, #2c3532 100%);
+}
+.scene-marsh .s-silhouette { color: #1b2220; }
+.scene-marsh .s-far { color: #3b4744; }
+.scene-marsh .s-glow { color: #d8f0d0; }
+
+/* ruins: a drowned chapel under cold rain */
+.scene-ruins {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(150, 170, 190, 0.35), transparent 55%),
+    linear-gradient(180deg, #252d38 0%, #313b47 45%, #12171d 100%);
+}
+.scene-ruins .s-silhouette { color: #0d1116; }
+.scene-ruins .s-far { color: #222a34; }
+.scene-ruins .s-glow { color: #b9c9da; }
+
+/* crypt: green candlelight under black water */
+.scene-crypt {
+  background:
+    radial-gradient(ellipse at 50% 85%, rgba(90, 200, 140, 0.35), transparent 45%),
+    linear-gradient(180deg, #0c1210 0%, #12201a 60%, #07100c 100%);
+}
+.scene-crypt .s-silhouette { color: #040706; }
+.scene-crypt .s-far { color: #13241d; }
+.scene-crypt .s-glow { color: #8ff0b8; }
+
+.fog-layer {
+  background:
+    radial-gradient(ellipse 40% 30% at 20% 60%, rgba(220, 230, 220, 0.35), transparent 70%),
+    radial-gradient(ellipse 35% 25% at 70% 70%, rgba(220, 230, 220, 0.3), transparent 70%),
+    radial-gradient(ellipse 30% 20% at 45% 80%, rgba(220, 230, 220, 0.25), transparent 70%);
+  animation: fog-drift 26s ease-in-out infinite alternate;
+  z-index: 3;
+}
+.fog-layer.slow { animation-duration: 40s; animation-direction: alternate-reverse; opacity: 0.7; }
+@keyframes fog-drift {
+  from { transform: translateX(-6%); }
+  to { transform: translateX(6%); }
+}
+
+.rain-layer {
+  background-image: repeating-linear-gradient(
+    105deg,
+    transparent 0 9px,
+    rgba(200, 215, 235, 0.16) 9px 10px
+  );
+  background-size: 200px 200px;
+  animation: rain-fall 0.6s linear infinite;
+  z-index: 4;
+}
+@keyframes rain-fall {
+  to { background-position: -40px 200px; }
+}
+
+.ember {
+  position: absolute;
+  inset: auto;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffb35c;
+  box-shadow: 0 0 6px 2px rgba(255, 160, 70, 0.6);
+  animation: ember-rise var(--dur, 6s) ease-in infinite;
+  animation-delay: var(--delay, 0s);
+  z-index: 4;
+}
+@keyframes ember-rise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--dx, 20px), -140px); opacity: 0; }
+}
+
+.wisp {
+  position: absolute;
+  inset: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 14px 6px currentColor;
+  opacity: 0.7;
+  animation: wisp-float var(--dur, 9s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+  z-index: 4;
+}
+@keyframes wisp-float {
+  0% { transform: translate(0, 0); opacity: 0.25; }
+  50% { opacity: 0.85; }
+  100% { transform: translate(var(--dx, 30px), var(--dy, -12px)); opacity: 0.35; }
+}
+
+.drip {
+  position: absolute;
+  inset: auto;
+  width: 2px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, rgba(160, 240, 200, 0.8));
+  animation: drip-fall var(--dur, 3s) cubic-bezier(0.55, 0, 1, 0.45) infinite;
+  animation-delay: var(--delay, 0s);
+  z-index: 4;
+}
+@keyframes drip-fall {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(160px); opacity: 0; }
+}
+
+.candle-flicker {
+  animation: flicker 3.2s ease-in-out infinite;
+}
+@keyframes flicker {
+  0%, 100% { opacity: 0.85; }
+  20% { opacity: 1; }
+  40% { opacity: 0.75; }
+  60% { opacity: 0.95; }
+  80% { opacity: 0.8; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in { animation: rise-in 420ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fog-layer, .rain-layer, .ember, .wisp, .drip, .candle-flicker, .d20.rolling, .d20.waiting, .rise-in, .quill-caret::after {
+    animation: none !important;
+  }
+}

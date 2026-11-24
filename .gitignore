@@ -13,3 +13,6 @@ src/router.ts
 src/modals.tsx
 .claude/launch.json
 .claude/worktrees
+
+# Planning/coordination docs (DeepSpace guidance: keep out of the repo)
+docs/

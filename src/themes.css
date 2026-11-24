@@ -1,23 +1,69 @@
 /*
- * Theme overrides — applied via <html data-theme="<id>">.
+ * Inkbound theme — "illuminated manuscript", dark-first.
  *
- * Default values live in `styles.css` (@theme block, slate — a neutral
- * placeholder, not a design choice). Every app should define its OWN theme
- * before first deploy: copy the example block below, rename the selector,
- * and set colors that fit the product. Shape comes from `--radius`.
- *
- * To add a theme:
- *   1. Add a `[data-theme="my-id"] { ... }` block overriding the shadcn
- *      tokens below. If the theme is light, include `color-scheme: light;`
- *      so native form controls (calendar icons, scrollbars) match.
- *   2. Add an entry to `src/themes.ts` so it shows up in the typed catalog.
- *   3. Add the theme's --color-background to the first-paint <style> block
- *      in index.html so the pre-CSS frame matches (no white flash).
- *   4. Switch to it via `data-theme` on <html> in index.html.
+ * Chrome is dark ink and worn leather; the story itself is set on parchment
+ * pages in a book face with gold-leaf and oxblood rubrication. Applied via
+ * <html data-theme="manuscript"> (index.html).
  */
 
-/* Paper — light example theme; shows the full token contract incl.
- * `color-scheme: light`. Replace or delete it once the app has its own. */
+/* Extra tokens (fonts, parchment, inks, sigil colours). Declared in @theme so
+ * Tailwind generates utilities such as bg-parchment, text-ink, font-display. */
+@theme {
+  --font-display: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-serif: 'EB Garamond', Georgia, serif;
+  --font-sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+
+  --color-parchment: #ede2c7;
+  --color-parchment-deep: #e0cfa9;
+  --color-parchment-edge: #c9b48a;
+  --color-ink: #2b2117;
+  --color-ink-soft: #5d4c37;
+  --color-ink-faint: #8a7658;
+  --color-gold: #c9a24c;
+  --color-gold-bright: #e2c27a;
+  --color-oxblood: #8f2e21;
+  --color-leather: #1b1611;
+  --color-leather-raised: #241d16;
+
+  --color-sigil-oxblood: #9b3326;
+  --color-sigil-moss: #5f7a3e;
+  --color-sigil-lapis: #3b5b9e;
+  --color-sigil-gold: #b88a2f;
+  --color-sigil-fern: #3c7d62;
+  --color-sigil-amethyst: #75519a;
+  --color-sigil-ember: #b9652d;
+  --color-sigil-slate: #56606f;
+}
+
+[data-theme="manuscript"] {
+  color-scheme: dark;
+  --color-background: #120f0b;
+  --color-foreground: #eadfc6;
+  --color-card: #1b1611;
+  --color-card-foreground: #eadfc6;
+  --color-popover: #211b14;
+  --color-popover-foreground: #eadfc6;
+  --color-primary: #c9a24c;
+  --color-primary-foreground: #1a130b;
+  --color-secondary: #2a2219;
+  --color-secondary-foreground: #eadfc6;
+  --color-muted: #221c15;
+  --color-muted-foreground: #a8997e;
+  --color-accent: #2e261b;
+  --color-accent-foreground: #f2e7cd;
+  --color-destructive: #b4432f;
+  --color-destructive-foreground: #fff3e3;
+  --color-border: #3a3025;
+  --color-input: #3a3025;
+  --color-ring: #c9a24c;
+  --radius: 0.3rem;
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 4px 14px 0 rgba(0, 0, 0, 0.45);
+  --color-shell: #16120d;
+  --color-shell-panel: #1b1611;
+}
+
+/* Paper — light example theme kept from the scaffold (unused). */
 [data-theme="paper"] {
   color-scheme: light;
   --color-background: #ffffff;

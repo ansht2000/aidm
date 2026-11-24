@@ -1,0 +1,173 @@
+/**
+ * Six pregenerated level-3 heroes. Mechanics follow the 5e SRD 5.1
+ * (CC-BY-4.0), simplified for a 25-minute session. Names and backstories
+ * are original and editable by the player.
+ */
+
+import type { Pregen } from '../types'
+
+export const PREGENS: Pregen[] = [
+  {
+    id: 'fighter',
+    name: 'Brann Hollowmere',
+    className: 'Fighter',
+    ancestry: 'Human',
+    level: 3,
+    abilities: { str: 16, dex: 12, con: 15, int: 10, wis: 12, cha: 10 },
+    ac: 18,
+    maxHp: 28,
+    speed: 30,
+    prof: 2,
+    proficiencies: { skills: ['athletics', 'intimidation', 'perception'], saves: ['str', 'con'] },
+    attacks: [
+      { name: 'Longsword', ability: 'str', damage: '1d8', addMod: true, damageType: 'slashing' },
+      { name: 'Javelin', ability: 'str', damage: '1d6', addMod: true, damageType: 'piercing', note: 'thrown 30 ft' },
+    ],
+    features: [
+      { name: 'Second Wind', text: 'Bonus action: regain 1d10+3 HP.', uses: 1, maxUses: 1 },
+      { name: 'Action Surge', text: 'Take one additional action this turn.', uses: 1, maxUses: 1 },
+      { name: 'Improved Critical', text: 'Weapon attacks score a critical hit on a 19 or 20.' },
+    ],
+    inventory: ['Chain mail', 'Shield', 'Longsword', '3 javelins', "Explorer's pack", 'Lantern'],
+    tagline: 'Shield-wall veteran who never leaves anyone behind',
+    backstory: 'Held the ford at Corran with six others. Came home alone, and has kept count ever since.',
+    sigil: 'oxblood',
+  },
+  {
+    id: 'rogue',
+    name: 'Wren Ashby',
+    className: 'Rogue',
+    ancestry: 'Halfling',
+    level: 3,
+    abilities: { str: 8, dex: 17, con: 12, int: 13, wis: 12, cha: 14 },
+    ac: 14,
+    maxHp: 21,
+    speed: 25,
+    prof: 2,
+    proficiencies: {
+      skills: ['stealth', 'sleight of hand', 'acrobatics', 'perception', 'deception', 'investigation'],
+      saves: ['dex', 'int'],
+    },
+    attacks: [
+      { name: 'Shortsword', ability: 'dex', damage: '1d6', addMod: true, damageType: 'piercing' },
+      { name: 'Shortbow', ability: 'dex', damage: '1d6', addMod: true, damageType: 'piercing', note: 'range 80 ft' },
+    ],
+    features: [
+      { name: 'Sneak Attack', text: 'Once per turn, +2d6 damage when you have advantage or an ally is next to the target.' },
+      { name: 'Cunning Action', text: 'Bonus action: Dash, Disengage, or Hide.' },
+      { name: 'Lucky', text: 'Reroll a natural 1 on an attack, check, or save.' },
+    ],
+    inventory: ['Leather armor', 'Shortsword', 'Shortbow + 20 arrows', "Thieves' tools", 'Grappling hook', 'Chalk'],
+    tagline: 'Quick-fingered courier with a talent for locked doors',
+    backstory: 'Delivered letters nobody else would carry. Still has one undelivered, addressed to Saltmere.',
+    sigil: 'moss',
+  },
+  {
+    id: 'wizard',
+    name: 'Ilsa Varn',
+    className: 'Wizard',
+    ancestry: 'High Elf',
+    level: 3,
+    abilities: { str: 8, dex: 14, con: 13, int: 17, wis: 12, cha: 10 },
+    ac: 12,
+    maxHp: 17,
+    speed: 30,
+    prof: 2,
+    proficiencies: { skills: ['arcana', 'history', 'investigation', 'perception'], saves: ['int', 'wis'] },
+    attacks: [
+      { name: 'Fire Bolt', ability: 'int', damage: '1d10', addMod: false, damageType: 'fire', note: 'cantrip, 120 ft' },
+      { name: 'Quarterstaff', ability: 'str', damage: '1d6', addMod: true, damageType: 'bludgeoning' },
+    ],
+    features: [
+      { name: '1st-level slots', text: 'Magic Missile (3 darts, 1d4+1 force each, never miss), Shield (+5 AC reaction), Burning Hands (3d6 fire, DEX save DC 13 half).', uses: 4, maxUses: 4 },
+      { name: '2nd-level slots', text: 'Misty Step (teleport 30 ft), Scorching Ray (3 rays, 2d6 fire each).', uses: 2, maxUses: 2 },
+      { name: 'Spellcasting', text: 'Spell save DC 13, spell attack +5.' },
+    ],
+    inventory: ['Spellbook', 'Arcane focus (crystal)', 'Quarterstaff', 'Ink and quill', 'Component pouch'],
+    tagline: 'Archivist who reads ruins like other people read faces',
+    backstory: 'Studied the drowned chapels of the coast from books. Wants, very badly, to see one.',
+    sigil: 'lapis',
+  },
+  {
+    id: 'cleric',
+    name: 'Tobias Grell',
+    className: 'Cleric (Life)',
+    ancestry: 'Hill Dwarf',
+    level: 3,
+    abilities: { str: 14, dex: 10, con: 15, int: 10, wis: 16, cha: 12 },
+    ac: 18,
+    maxHp: 27,
+    speed: 25,
+    prof: 2,
+    proficiencies: { skills: ['medicine', 'religion', 'insight'], saves: ['wis', 'cha'] },
+    attacks: [
+      { name: 'Warhammer', ability: 'str', damage: '1d8', addMod: true, damageType: 'bludgeoning' },
+      { name: 'Sacred Flame', ability: 'wis', damage: '1d8', addMod: false, damageType: 'radiant', save: 'dex', note: 'cantrip, DEX save DC 13' },
+    ],
+    features: [
+      { name: '1st-level slots', text: 'Cure Wounds (1d8+6), Healing Word (bonus action, 1d4+6, 60 ft), Bless (+1d4 to attacks and saves for 3 allies).', uses: 4, maxUses: 4 },
+      { name: '2nd-level slots', text: 'Spiritual Weapon (bonus action, 1d8+3 force), Lesser Restoration.', uses: 2, maxUses: 2 },
+      { name: 'Turn Undead', text: 'Undead within 30 ft make a WIS save (DC 13) or flee for 1 minute.', uses: 1, maxUses: 1 },
+    ],
+    inventory: ['Chain mail', 'Shield', 'Warhammer', 'Holy symbol (silver anchor)', "Healer's kit", 'Candles'],
+    tagline: 'Patient priest of the harbor shrine, steady as a breakwater',
+    backstory: 'Buries the drowned of three villages. Has started to notice some of the graves are empty.',
+    sigil: 'gold',
+  },
+  {
+    id: 'ranger',
+    name: 'Sable Thornwick',
+    className: 'Ranger',
+    ancestry: 'Wood Elf',
+    level: 3,
+    abilities: { str: 12, dex: 17, con: 13, int: 10, wis: 14, cha: 8 },
+    ac: 15,
+    maxHp: 25,
+    speed: 35,
+    prof: 2,
+    proficiencies: { skills: ['survival', 'perception', 'stealth', 'nature', 'animal handling'], saves: ['str', 'dex'] },
+    attacks: [
+      { name: 'Longbow', ability: 'dex', damage: '1d8', addMod: true, damageType: 'piercing', hitBonus: 2, note: 'Archery style, range 150 ft' },
+      { name: 'Shortswords', ability: 'dex', damage: '1d6', addMod: true, damageType: 'slashing' },
+    ],
+    features: [
+      { name: '1st-level slots', text: "Hunter's Mark (+1d6 damage to one target), Cure Wounds (1d8+2).", uses: 3, maxUses: 3 },
+      { name: 'Colossus Slayer', text: 'Once per turn, +1d8 damage to a creature that is already wounded.' },
+      { name: 'Natural Explorer', text: 'Never lost in wetlands; advantage on tracking there.' },
+    ],
+    inventory: ['Studded leather', 'Longbow + 20 arrows', 'Two shortswords', 'Hunting trap', 'Rope (50 ft)'],
+    tagline: 'Marsh tracker who trusts animals more than people',
+    backstory: 'Grew up on the edge of the Saltmere fens. The birds there have gone quiet, and that frightens them.',
+    sigil: 'fern',
+  },
+  {
+    id: 'bard',
+    name: 'Pip Marrowlight',
+    className: 'Bard',
+    ancestry: 'Tiefling',
+    level: 3,
+    abilities: { str: 8, dex: 14, con: 13, int: 12, wis: 10, cha: 17 },
+    ac: 13,
+    maxHp: 21,
+    speed: 30,
+    prof: 2,
+    proficiencies: { skills: ['performance', 'persuasion', 'deception', 'insight', 'history'], saves: ['dex', 'cha'] },
+    attacks: [
+      { name: 'Rapier', ability: 'dex', damage: '1d8', addMod: true, damageType: 'piercing' },
+      { name: 'Vicious Mockery', ability: 'cha', damage: '1d4', addMod: false, damageType: 'psychic', save: 'wis', note: 'cantrip, WIS save DC 13; target has disadvantage on its next attack' },
+    ],
+    features: [
+      { name: 'Bardic Inspiration', text: 'Bonus action: an ally adds 1d6 to one roll.', uses: 3, maxUses: 3 },
+      { name: '1st-level slots', text: 'Healing Word (1d4+3), Thunderwave (2d8 thunder, CON save DC 13), Charm Person.', uses: 4, maxUses: 4 },
+      { name: '2nd-level slots', text: 'Hold Person (WIS save DC 13), Shatter (3d8 thunder).', uses: 2, maxUses: 2 },
+    ],
+    inventory: ['Leather armor', 'Rapier', 'Lute with a cracked neck', 'Fine clothes', 'Songbook'],
+    tagline: 'Silver-tongued minstrel collecting songs nobody should sing',
+    backstory: "Heard a sailor hum the Saltmere bell's tune in a port tavern, and hasn't been able to stop humming it.",
+    sigil: 'amethyst',
+  },
+]
+
+export const PREGEN_BY_ID = Object.fromEntries(PREGENS.map((p) => [p.id, p])) as Record<string, Pregen>
+
+export const SIGILS = ['oxblood', 'moss', 'lapis', 'gold', 'fern', 'amethyst', 'ember', 'slate'] as const
