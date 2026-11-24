@@ -1,9 +1,11 @@
 /**
  * Runs one DM turn or the end-of-session recap inside the table's JobRoom.
  *
- * The model is Claude Opus 5.5 through DeepSpace's agent runner
- * (`streamDeepSpaceAgent`): owner-billed (no user token), low effort for
- * table-speed latency, a bounded tool loop, and an abort deadline.
+ * The model is Claude Haiku 5.5 through DeepSpace's agent runner
+ * (`streamDeepSpaceAgent`): owner-billed (no user token), a bounded tool
+ * loop, and an abort deadline. Haiku was chosen over Opus 5.5 after measuring
+ * ~$0.15 per Opus turn at free-tier rates (~$5 per session); Haiku is roughly
+ * 1/40 of that and faster, which matters more at a live table.
  */
 
 import { streamDeepSpaceAgent } from 'deepspace/worker'
@@ -14,10 +16,10 @@ import { addLog, afterDmTurn, loadTable, patchGame, type DmJobPayload, type Tabl
 import type { LogData, Recap, RollData, TableData } from '../types'
 import { runFakeTurn, fakeRecap } from './fake'
 import { recapPrompt, systemPrompt, turnMessage } from './prompt'
-import { buildAiTools, type ToolContext } from './tools'
+import { buildAiTools, flushStagedRolls, type ToolContext } from './tools'
 import { NarrationWriter } from './writer'
 
-export const DM_MODEL_ID = 'claude-opus-5-5'
+export const DM_MODEL_ID = 'claude-haiku-5-5'
 const TURN_TIMEOUT_MS = 90_000
 
 async function loadHistory(snap: TableSnapshot) {
@@ -39,7 +41,7 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
 
   await patchGame(snap.tools, { dmStatus: 'thinking' })
   const writer = new NarrationWriter(snap.tools, snap.game.round)
-  const toolCtx: ToolContext = { snap, writer, endRequested: null, rollsRequested: false }
+  const toolCtx: ToolContext = { snap, writer, endRequested: null, rollsRequested: false, stagedRolls: [], stagedNotes: [] }
   const started = Date.now()
 
   try {
@@ -51,7 +53,7 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
       const { result } = streamDeepSpaceAgent(env, {
         profile: 'application',
         modelId: DM_MODEL_ID,
-        effort: 'low',
+        effort: 'medium',
         maxToolCalls: 14,
         maxOutputTokens: 4000,
         instructions: systemPrompt(snap.game.moduleId),
@@ -61,7 +63,9 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
       })
       let narrating = false
       for await (const part of result.fullStream) {
-        if (part.type === 'text-delta') {
+        if (part.type === 'start-step') {
+          writer.softBreak()
+        } else if (part.type === 'text-delta') {
           if (!narrating) {
             narrating = true
             void patchGame(snap.tools, { dmStatus: 'narrating' })
@@ -73,6 +77,7 @@ export async function runDmTurn(env: Env, payload: DmJobPayload, ctx: JobContext
       }
     }
     await writer.drain()
+    await flushStagedRolls(toolCtx)
   } catch (err) {
     await writer.drain().catch(() => undefined)
     const message = err instanceof Error ? err.message : String(err)

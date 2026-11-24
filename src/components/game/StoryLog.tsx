@@ -126,7 +126,7 @@ export function StoryLog({ className }: { className?: string }) {
         {items.length === 0 && <p className="narration text-center italic text-ink-soft">The page is blank. The tale begins when the host starts the session.</p>}
         {items.map((item) => {
           if (item.kind === 'roll') {
-            lastNarrationWasDropcap = false
+            if (item.data.status !== 'requested') lastNarrationWasDropcap = false
             return <RollCard key={item.id} rollId={item.id} roll={item.data} />
           }
           const e = item.data
@@ -139,8 +139,13 @@ export function StoryLog({ className }: { className?: string }) {
               </div>
             )
           }
-          lastNarrationWasDropcap = false
-          if (e.kind === 'action') return <ActionNote key={item.id} entry={e} />
+          // A drop cap opens each DM turn: reset after player actions and scene
+          // headings, but not after the dice lines woven through a turn.
+          if (e.kind === 'action') {
+            lastNarrationWasDropcap = false
+            return <ActionNote key={item.id} entry={e} />
+          }
+          if ((e.data as { type?: string })?.type === 'scene') lastNarrationWasDropcap = false
           return <SystemLine key={item.id} entry={e} />
         })}
       </div>

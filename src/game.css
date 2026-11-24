@@ -3,6 +3,8 @@
  * hand-built CSS/SVG scenes. All motion respects prefers-reduced-motion.
  */
 
+@layer components {
+
 /* ── Parchment page ─────────────────────────────────────────────────────── */
 .parchment {
   background-color: var(--color-parchment);
@@ -315,3 +317,5 @@
     animation: none !important;
   }
 }
+
+} /* @layer components */

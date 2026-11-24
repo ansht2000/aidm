@@ -17,6 +17,7 @@ export class NarrationWriter {
   private chain: Promise<unknown> = Promise.resolve()
   private current: { id: string; text: string } | null = null
   private lastFlush = 0
+  private needsSpace = false
   private flushTimer: ReturnType<typeof setTimeout> | null = null
   /** Every narration segment written this turn (for the recap and debugging). */
   readonly segments: string[] = []
@@ -32,8 +33,20 @@ export class NarrationWriter {
     return next
   }
 
+  /** A new model step began; the next text continues the same paragraph. */
+  softBreak(): void {
+    // Queued like everything else, so it lands after text already in flight.
+    void this.run(async () => {
+      this.needsSpace = true
+    })
+  }
+
   text(delta: string): Promise<void> {
     return this.run(async () => {
+      if (this.needsSpace && this.current && !/\s$/.test(this.current.text) && !/^\s/.test(delta)) {
+        delta = ` ${delta}`
+      }
+      this.needsSpace = false
       if (!this.current) {
         const trimmed = delta.replace(/^\s+/, '')
         if (!trimmed) return

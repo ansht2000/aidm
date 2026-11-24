@@ -35,8 +35,28 @@ export interface ToolContext {
   writer: NarrationWriter
   /** Set by end_adventure. */
   endRequested: 'victory' | 'defeat' | null
-  /** Set when request_rolls created at least one roll. */
+  /** Set when request_rolls staged at least one roll. */
   rollsRequested: boolean
+  /** Rolls staged this turn; written after the narration (see flushStagedRolls). */
+  stagedRolls: RollData[]
+  /** Item notes staged this turn; written after the narration. */
+  stagedNotes: { text: string; characterId: string }[]
+}
+
+/**
+ * Write staged rolls and item notes after the turn's narration, so a roll
+ * request always appears below the story that leads to it, even when the
+ * model called the tool before writing.
+ */
+export async function flushStagedRolls(ctx: ToolContext) {
+  for (const n of ctx.stagedNotes) {
+    await addLog(ctx.snap.tools, { kind: 'system', text: n.text, characterId: n.characterId, round: ctx.snap.game.round, data: { type: 'item' } })
+  }
+  for (const r of ctx.stagedRolls) {
+    await ctx.snap.tools.create<RollData>('rolls', { ...r, seq: nextSeq() })
+  }
+  ctx.stagedNotes = []
+  ctx.stagedRolls = []
 }
 
 type Result = Record<string, unknown>
@@ -80,8 +100,7 @@ export const impl = {
     const created: string[] = []
     const errors: string[] = []
     const pending = await ctx.snap.tools.query<RollData>('rolls', { where: { status: 'requested' }, limit: 20 })
-    const pendingFor = new Set(pending.map((p) => p.data.characterId))
-    await ctx.writer.closeSegment()
+    const pendingFor = new Set([...pending.map((p) => p.data.characterId), ...ctx.stagedRolls.map((r) => r.characterId)])
     for (const r of input.rolls.slice(0, 6)) {
       const c = findCharacter(ctx, r.characterId)
       if (!c) {
@@ -137,7 +156,7 @@ export const impl = {
         reason: reason.slice(0, 120),
         seq: nextSeq(),
       }
-      await ctx.snap.tools.create<RollData>('rolls', row)
+      ctx.stagedRolls.push(row)
       pendingFor.add(c.recordId)
       created.push(`${c.data.name}: ${label} (${fmtMod(modifier)}, DC ${dc}${row.mode !== 'normal' ? `, ${row.mode === 'adv' ? 'advantage' : 'disadvantage'}` : ''})`)
     }
@@ -147,7 +166,7 @@ export const impl = {
       requested: created,
       errors,
       instruction: created.length
-        ? 'Rolls requested. End your turn now with one short line inviting those players to roll. Do not narrate outcomes yet; results arrive next turn.'
+        ? 'Rolls requested. Finish your narration with one short line inviting those players to roll, then stop. Do not narrate outcomes yet; results arrive next turn.'
         : 'No rolls were created.',
     }
   },
@@ -309,9 +328,7 @@ export const impl = {
       inv.splice(i, 1)
     }
     await setCharacter(ctx, pc.recordId, { inventory: inv.slice(0, 30) })
-    if (input.action === 'add') {
-      await ctx.writer.note({ kind: 'system', text: `${pc.data.name} receives: ${item}.`, characterId: pc.recordId, data: { type: 'item' } })
-    }
+    if (input.action === 'add') ctx.stagedNotes.push({ text: `${pc.data.name} receives: ${item}.`, characterId: pc.recordId })
     return { ok: true, inventory: inv }
   },
 
