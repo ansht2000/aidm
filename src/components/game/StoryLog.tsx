@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { fmtMod } from '@/game/rules'
 import type { LogData, RollData } from '@/game/types'
+import { ReadAloud } from './ReadAloud'
 import { RollCard } from './RollCard'
 import { useTable } from './TableContext'
 
@@ -92,7 +93,7 @@ function ActionNote({ entry }: { entry: LogData }) {
 }
 
 export function StoryLog({ className }: { className?: string }) {
-  const { log, rolls } = useTable()
+  const { log, rolls, game } = useTable()
   const scroller = useRef<HTMLDivElement>(null)
   const [pinned, setPinned] = useState(true)
 
@@ -103,6 +104,16 @@ export function StoryLog({ className }: { className?: string }) {
     ]
     return all.sort((a, b) => a.seq - b.seq)
   }, [log, rolls])
+
+  // The DM's latest finished passage (narration since the last player action) can be read aloud.
+  const passage = useMemo(() => {
+    if (game?.phase === 'dm') return null
+    let lastAction = -1
+    for (const l of log) if (l.data.kind === 'action' && l.data.seq > lastAction) lastAction = l.data.seq
+    const rows = log.filter((l) => l.data.kind === 'narration' && l.data.seq > lastAction)
+    if (rows.length === 0 || rows.some((r) => r.data.streaming)) return null
+    return { ids: rows.map((r) => r.recordId).slice(-8), lastId: rows[rows.length - 1].recordId }
+  }, [log, game?.phase])
 
   const lastText = items.length ? JSON.stringify(items[items.length - 1].data).length + items.length : 0
   useEffect(() => {
@@ -136,6 +147,11 @@ export function StoryLog({ className }: { className?: string }) {
             return (
               <div key={item.id} className="rise-in" data-testid="narration">
                 <Narration text={e.text} streaming={e.streaming} dropcap={drop} />
+                {passage?.lastId === item.id && (
+                  <div className="mt-1 flex justify-end">
+                    <ReadAloud logIds={passage.ids} />
+                  </div>
+                )}
               </div>
             )
           }

@@ -25,6 +25,7 @@ import {
   type TableSnapshot,
 } from '../game/engine'
 import { cryptoRng, resolveRoll } from '../game/rules'
+import { chronicleEmail, speechText } from '../game/share'
 import {
   ADVENTURE_SETTINGS,
   ADVENTURE_TONES,
@@ -36,6 +37,7 @@ import {
   type CharacterData,
   type GameData,
   type LogData,
+  type Recap,
   type RollData,
   type TableData,
 } from '../game/types'
@@ -92,18 +94,21 @@ function myCharacter(snap: TableSnapshot, userId: string) {
  * (userId, day, kind, slot) tuple is unique in the Durable Object, so
  * concurrent requests cannot all pass the cap.
  */
-async function claimQuota(env: Env, userId: string, kind: 'table' | 'adventure', max: number): Promise<boolean> {
+async function claimQuota(env: Env, userId: string, kind: string, max: number, day = new Date().toISOString().slice(0, 10)): Promise<string | null> {
   const app = roomTools(env, appRoomId(env))
-  const day = new Date().toISOString().slice(0, 10)
   for (let slot = 0; slot < max; slot++) {
     try {
-      await app.create('quota', { userId, day, kind, slot })
-      return true
+      return await app.create('quota', { userId, day, kind, slot })
     } catch (e) {
       if (!/duplicate|exists/i.test(String(e))) throw e
     }
   }
-  return false
+  return null
+}
+
+/** Give a slot back when the paid call it was claimed for failed. */
+async function releaseQuota(env: Env, quotaId: string) {
+  await roomTools(env, appRoomId(env)).remove('quota', quotaId).catch(() => {})
 }
 
 async function displayName(env: Env, userId: string): Promise<string> {
@@ -427,4 +432,82 @@ export const endGame: Handler = action(async ({ userId, params, env }) => {
   }
   await queueRecap(env, tableId, snap, 'unfinished')
   return ok({ ending: true })
+})
+
+// ---------------------------------------------------------------------------
+// Taking the tale away from the table (DeepSpace integrations, owner-billed)
+// ---------------------------------------------------------------------------
+
+const LOG_ID = /^[A-Za-z0-9_-]{1,64}$/
+const VOICE_PER_DAY = 15
+
+/**
+ * Read a finished DM passage (or the chronicle) aloud with an ElevenLabs
+ * narrator voice. Returns a playable audio data URL; nothing is stored.
+ * Capped at 15 readings per player per day, and at MAX_SPEECH_CHARS per reading.
+ */
+export const readAloud: Handler = action(async ({ userId, params, env, tools }) => {
+  const tableId = requireTableId(params)
+  const { snap } = await requireSeat(env, tableId, userId)
+  const ids = (Array.isArray(params.logIds) ? params.logIds : []).filter((x): x is string => typeof x === 'string' && LOG_ID.test(x)).slice(0, 8)
+  if (ids.length === 0) throw new UserError('Nothing to read.')
+
+  const rows = (await Promise.all(ids.map((id) => snap.tools.get<LogData>('log', id)))).filter((r): r is RecordData<LogData> => !!r)
+  const readable = rows
+    .filter((r) => (r.data.kind === 'narration' && !r.data.streaming) || r.data.kind === 'recap')
+    .sort((a, b) => a.data.seq - b.data.seq)
+  if (readable.length === 0) throw new UserError('That passage is not finished yet.')
+  const text = speechText(readable.map((r) => (r.data.kind === 'recap' ? `${(r.data.data as unknown as Recap).title}.\n\n${r.data.text}` : r.data.text)))
+  if (!text) throw new UserError('Nothing to read.')
+
+  const exempt = userId === env.OWNER_USER_ID || (env.ALLOW_DEBUG_ROUTES === 'true' && params.enforceQuota !== true)
+  const slot = exempt ? null : await claimQuota(env, userId, 'voice', VOICE_PER_DAY)
+  if (!exempt && !slot) throw new UserError(`The narrator needs rest: ${VOICE_PER_DAY} readings a day per player.`)
+
+  const out = await tools.integration<{ audioUrl: string }>('elevenlabs/generate-speech', {
+    text,
+    model_id: 'eleven_flash_v2_5',
+    output_format: 'mp3_22050_32',
+  })
+  if (!out.success || !out.data?.audioUrl?.startsWith('data:audio/')) {
+    if (slot) await releaseQuota(env, slot)
+    console.error(`[voice] failed table=${tableId}: ${out.success ? 'no audio' : out.error}`)
+    throw new UserError('The narrator lost their voice. Try again in a moment.')
+  }
+  return ok({ audioUrl: out.data.audioUrl, chars: text.length })
+})
+
+/**
+ * Email the finished chronicle to the caller's own address (never to other
+ * players, so nobody's email is exposed or spammed). Once per player per table.
+ */
+export const emailChronicle: Handler = action(async ({ userId, params, env, tools }) => {
+  const tableId = requireTableId(params)
+  const { table, snap } = await requireSeat(env, tableId, userId)
+  if (snap.game.phase !== 'ended') throw new UserError('The chronicle is not written yet.')
+  const [entry] = await snap.tools.query<LogData>('log', { where: { kind: 'recap' }, orderBy: 'seq', orderDir: 'desc', limit: 1 })
+  if (!entry) throw new UserError('The chronicle is not written yet.')
+  const recap = entry.data.data as unknown as Recap
+
+  const user = await roomTools(env, appRoomId(env)).get<{ email?: string }>('users', userId)
+  const to = typeof user?.data.email === 'string' ? user.data.email.trim() : ''
+  if (!/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(to)) throw new UserError('Your account has no email address to send to.')
+
+  const slot = await claimQuota(env, userId, `email:${tableId}`, 1, 'once')
+  if (!slot) throw new UserError('This chronicle is already on its way to your inbox.')
+
+  const mail = chronicleEmail({
+    tableName: table.data.name,
+    moduleTitle: snap.module.title,
+    recap,
+    party: snap.characters.map((c) => ({ name: c.data.name, className: c.data.className })),
+    url: `https://${env.APP_NAME}.app.space/t/${table.data.code}`,
+  })
+  const out = await tools.integration('email/send', { to, subject: mail.subject, html: mail.html, text: mail.text })
+  if (!out.success) {
+    await releaseQuota(env, slot)
+    console.error(`[email] failed table=${tableId}: ${out.error}`)
+    throw new UserError('The letter could not be sent. Try again in a moment.')
+  }
+  return ok({ sentTo: to })
 })

@@ -1,6 +1,7 @@
 /**
- * Server-action guarantees: auth required, seat checks, and the daily table
- * cap holding under a burst of parallel requests (atomic quota slots).
+ * Server-action guarantees: auth required, seat checks (including the paid
+ * read-aloud and email actions), and the daily table cap holding under a
+ * burst of parallel requests (atomic quota slots).
  */
 import { test, expect, loadAllTestAccounts, type MultiplayerUser } from 'deepspace/testing'
 
@@ -37,11 +38,19 @@ test('seat checks and atomic daily cap', async ({ users, request }) => {
   // B is not seated at A's table: every game action is refused.
   const joined = await call(tokenA, 'joinTable', { code: codeA })
   const tableId = joined.data.tableId as string
-  for (const name of ['submitAction', 'rollDice', 'startGame', 'claimCharacter', 'hostAdvance', 'endGame']) {
-    const out = await call(tokenB, name, { tableId, text: 'I steal the gold', rollId: 'x', pregenId: 'rogue' })
+  for (const name of ['submitAction', 'rollDice', 'startGame', 'claimCharacter', 'hostAdvance', 'endGame', 'readAloud', 'emailChronicle']) {
+    const out = await call(tokenB, name, { tableId, text: 'I steal the gold', rollId: 'x', pregenId: 'rogue', logIds: ['x'] })
     expect(out.success, name).toBe(false)
     expect(out.error, name).toMatch(/not seated/i)
   }
+
+  // Seated, but the paid integrations refuse until there is something finished to share.
+  const early = await call(tokenA, 'emailChronicle', { tableId })
+  expect(early.success).toBe(false)
+  expect(early.error).toMatch(/not written yet/i)
+  const nothing = await call(tokenA, 'readAloud', { tableId, logIds: ['../etc', 'x'.repeat(80)] })
+  expect(nothing.success).toBe(false)
+  expect(nothing.error).toMatch(/nothing to read/i)
 
   // Ten parallel createTable calls with the cap enforced: at most 3 succeed today.
   const results = await Promise.all(Array.from({ length: 10 }, (_, i) => call(tokenB, 'createTable', { name: `[api] burst ${i}`, enforceQuota: true })))

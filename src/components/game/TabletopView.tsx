@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { healthBand } from '@/game/rules'
 import { Composer } from './Composer'
 import { HpBar, Sigil, SheetDialog } from './PartyRail'
+import { ReadAloud } from './ReadAloud'
 import { RollCard } from './RollCard'
 import { SceneArt } from './SceneArt'
 import { StoryLog } from './StoryLog'
@@ -29,7 +30,7 @@ export function TabletopView({ toolbar }: { toolbar: React.ReactNode }) {
   const scene = mod?.scenes.find((s) => s.id === game?.sceneId) ?? mod?.scenes[0]
 
   // The caption is the DM's latest turn: narration since the last player action.
-  const { caption, streaming, recent } = useMemo(() => {
+  const { caption, captionIds, streaming, recent } = useMemo(() => {
     const lastAction = [...log].reverse().find((l) => l.data.kind === 'action')
     const since = log.filter((l) => !lastAction || l.data.seq > lastAction.data.seq)
     let narr = since.filter((l) => l.data.kind === 'narration')
@@ -37,6 +38,7 @@ export function TabletopView({ toolbar }: { toolbar: React.ReactNode }) {
     const recentSystem = since.filter((l) => l.data.kind === 'system' && (l.data.data as { type?: string }).type !== 'scene').slice(-3)
     return {
       caption: narr.map((n) => n.data.text).join('\n\n'),
+      captionIds: narr.map((n) => n.recordId).slice(-8),
       streaming: narr.some((n) => n.data.streaming),
       recent: recentSystem,
     }
@@ -94,6 +96,11 @@ export function TabletopView({ toolbar }: { toolbar: React.ReactNode }) {
                   dangerouslySetInnerHTML={{ __html: renderInline(p) }}
                 />
               ))}
+              {!streaming && game?.phase !== 'dm' && (
+                <div className="mt-1 flex justify-end">
+                  <ReadAloud logIds={captionIds} />
+                </div>
+              )}
             </div>
           )}
         </div>

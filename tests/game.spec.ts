@@ -71,6 +71,8 @@ test('two players run a session with the scripted DM', async ({ users }) => {
   await guest.page.getByRole('button', { name: 'Story', exact: true }).click()
   await expect(guest.page.getByTestId('story-log')).toBeVisible()
 
+  if (process.env.SHOT_DIR) await host.page.screenshot({ path: `${process.env.SHOT_DIR}/story-read-aloud.png` })
+
   // Round 1: both act; the DM asks one of them for an Insight roll.
   // Before a first action the hand-written adventure suggests a starter.
   await expect(host.page.getByTestId('action-input')).toHaveAttribute('placeholder', 'I ask the miller when he last saw Elsie…', { timeout: 30_000 })
@@ -100,7 +102,12 @@ test('two players run a session with the scripted DM', async ({ users }) => {
   await act(guest, 'I scout ahead quietly.')
   for (const u of [host, guest]) {
     await expect(u.page.getByTestId('chronicle-title')).toHaveText('The Bell Falls Silent', { timeout: 40_000 })
+    // Sharing the tale: read aloud (ElevenLabs) and email (DeepSpace email) are offered.
+    // Not clicked here: both are real paid calls (tests/live-integrations.spec.ts covers them).
+    await expect(u.page.getByTestId('chronicle').getByRole('button', { name: 'Read the chronicle aloud' })).toBeVisible()
+    await expect(u.page.getByTestId('email-chronicle')).toBeVisible()
   }
+  if (process.env.SHOT_DIR) await host.page.screenshot({ path: `${process.env.SHOT_DIR}/chronicle.png` })
 })
 
 test('a player who is not seated cannot open a table room socket', async ({ users }) => {

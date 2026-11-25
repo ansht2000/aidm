@@ -1,14 +1,20 @@
 /** End of session: the AI-written chronicle, plus the full story beneath it. */
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { buttonVariants } from '@/components/ui'
+import { Button, buttonVariants, useToast } from '@/components/ui'
+import { useAction } from '@/lib/actions'
 import type { Recap } from '@/game/types'
 import { Sigil } from './PartyRail'
+import { ReadAloud } from './ReadAloud'
 import { StoryLog } from './StoryLog'
 import { useTable } from './TableContext'
 
 export function Chronicle() {
-  const { log, characters, game, table } = useTable()
+  const { log, characters, game, table, tableId, mine } = useTable()
+  const { run, pending } = useAction()
+  const { success } = useToast()
+  const [sentTo, setSentTo] = useState<string | null>(null)
   const entry = [...log].reverse().find((l) => l.data.kind === 'recap')
   const recap = entry?.data.data as unknown as Recap | undefined
   const writing = !recap
@@ -26,6 +32,9 @@ export function Chronicle() {
                 {recap.title}
               </h1>
               <p className="mt-2 rubric text-lg">{recap.outcome === 'victory' ? 'A victory' : recap.outcome === 'defeat' ? 'A defeat' : 'A tale left unfinished'}</p>
+              <div className="mt-3 flex justify-center">
+                <ReadAloud logIds={entry ? [entry.recordId] : []} label="Read the chronicle aloud" className="text-sm" />
+              </div>
               <div className="mt-6 space-y-3 text-left">
                 {recap.summary.split(/\n+/).map((p, i) => (
                   <p key={i} className={i === 0 ? 'narration dropcap' : 'narration'}>
@@ -50,9 +59,29 @@ export function Chronicle() {
               )}
             </>
           )}
-          <Link to="/home" className={buttonVariants({ variant: 'default', className: 'mt-8' })}>
-            Back to the tavern board
-          </Link>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {!writing && mine && (
+              <Button
+                variant="outline"
+                className="border-ink/40 bg-transparent text-ink hover:bg-ink/5 hover:text-ink"
+                data-testid="email-chronicle"
+                disabled={!!sentTo}
+                loading={pending === 'emailChronicle'}
+                onClick={async () => {
+                  const out = await run<{ sentTo: string }>('emailChronicle', { tableId })
+                  if (out.success && out.data) {
+                    setSentTo(out.data.sentTo)
+                    success('On its way', `The chronicle was sent to ${out.data.sentTo}.`)
+                  }
+                }}
+              >
+                {sentTo ? `Sent to ${sentTo}` : 'Email me this chronicle'}
+              </Button>
+            )}
+            <Link to="/home" className={buttonVariants({ variant: 'default' })}>
+              Back to the tavern board
+            </Link>
+          </div>
         </div>
       </div>
       <StoryLog className="overflow-visible" />

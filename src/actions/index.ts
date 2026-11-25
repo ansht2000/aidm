@@ -4,6 +4,8 @@ import {
   claimCharacter,
   createTable,
   endGame,
+  emailChronicle,
+  readAloud,
   hostAdvance,
   joinTable,
   leaveTable,
@@ -28,4 +30,6 @@ export const actions: Record<string, ActionHandler<Env>> = {
   hostAdvance,
   retryDm,
   endGame,
+  emailChronicle,
+  readAloud,
 }
