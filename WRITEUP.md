@@ -6,7 +6,7 @@ Inkbound runs a short (~25 minute) 5e-compatible fantasy adventure for a group o
 
 ## How to try it (2 minutes)
 
-1. Open https://aidm.app.space → **Enter the tavern** → sign in (Google or GitHub).
+1. Open https://aidm.app.space → **Enter the tavern** → sign in with Google.
 2. **Host a new table**. Keep *The Bell Beneath the Marsh*, or pick *A new one, written by the DM*.
 3. **Copy invite link** and open it in a second browser or profile with another account (a solo game also works).
 4. Each player picks a hero, presses **Play as…**, then **I'm ready**. The host presses **Begin the tale**.
@@ -53,7 +53,7 @@ A second tradeoff was the model. I started on Claude Opus 5.5 and measured about
 | DM turns that outlive a request | `JobRoom` + `enqueueJob` | Durable, serialized per table, survives disconnects; no hand-rolled queue or lock. |
 | LLM with tools | `streamDeepSpaceAgent` (application profile, `effort`, `maxToolCalls`) | Platform model catalog, owner billing, bounded tool loop; no API keys or secrets. |
 | Online / typing indicators | `PresenceRoom` (`usePresenceRoom`) | Ephemeral, no persistence needed. |
-| Auth | DeepSpace auth (Google/GitHub), verified JWT on every socket and action | Required: signed-out connections are session-local, so they can't keep a character. |
+| Auth | DeepSpace auth (Google sign-in), verified JWT on every socket and action | Required: signed-out connections are session-local, so they can't keep a character. |
 
 **Integrations considered and not used:**
 - **Image generation** (`gemini/generate-image`): each image takes 5–15 s and costs money every scene, for little gameplay value. Hand-built CSS/SVG scenes (tavern, marsh, ruins, crypt) set the mood instantly and cost nothing.
@@ -131,6 +131,7 @@ This was built with Claude Code (Claude Opus 5.5) in one working day.
 - Architecture: per-table background jobs; the owner pays for AI, with caps; GitHub as source of truth.
 - Scope: which items were stretch.
 - Cost: the Opus → Haiku switch; added credits.
+- Sign-in: Google only. The SDK's default sign-in card also offered GitHub, which suits developers rather than a group of friends playing D&D.
 
 Personal verification and changes: _(fill in what you tested yourself on the live app and anything you changed)_.
 

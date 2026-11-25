@@ -5,7 +5,8 @@
 
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AuthOverlay, useAuth, useQuery } from 'deepspace'
+import { useAuth, useQuery } from 'deepspace'
+import { SignInOverlay } from '@/components/SignInOverlay'
 import { Button, Input, Switch, buttonVariants } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { useAction } from '@/lib/actions'
@@ -219,7 +220,7 @@ export default function HomePage() {
           )}
         </div>
       )}
-      {showAuth && <AuthOverlay onClose={() => setShowAuth(false)} />}
+      {showAuth && <SignInOverlay onClose={() => setShowAuth(false)} />}
     </div>
   )
 }

@@ -60,7 +60,7 @@ export default function Landing() {
                 >
                   Enter the tavern
                 </Link>
-                <span className="text-sm text-muted-foreground">Free to play · sign in with Google or GitHub</span>
+                <span className="text-sm text-muted-foreground">Free to play · sign in with Google</span>
               </div>
             </div>
           </div>
