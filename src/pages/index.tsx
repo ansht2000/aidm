@@ -16,6 +16,7 @@
 import { Link } from 'react-router-dom'
 import { Seo } from '../components/Seo'
 import { SceneArt } from '../components/game/SceneArt'
+import { ADVENTURE_SETTINGS, ADVENTURE_TONES } from '../game/types'
 import { seo } from '../seo'
 
 const STEPS = [
@@ -89,14 +90,34 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-6 py-14">
+        <section className="mx-auto max-w-5xl px-6 py-14" data-testid="landing-new-tale">
           <div className="grid gap-8 md:grid-cols-3">
             <div className="md:col-span-1">
-              <h2 className="font-display text-3xl font-semibold">A fair table</h2>
+              <h2 className="font-display text-3xl font-semibold">A new tale every night</h2>
             </div>
-            <p className="font-serif text-lg text-muted-foreground md:col-span-2">
-              The Dungeon Master tells the story, but it never touches the dice. Every roll, hit point and turn is decided by the table itself, out in the open, so nobody wonders whether the DM fudged it. When a roll is yours, you press the button.
-            </p>
+            <div className="md:col-span-2">
+              <p className="font-serif text-lg text-muted-foreground">
+                Play <em>The Bell Beneath the Marsh</em>, or ask the Dungeon Master for a tale nobody has played before. Choose the tone and where it happens, and it is written in about a minute, while your party picks their heroes.
+              </p>
+              <dl className="mt-6 space-y-4">
+                {[
+                  { label: 'Tone', options: ADVENTURE_TONES },
+                  { label: 'Setting', options: ADVENTURE_SETTINGS },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <dt className="mb-2 font-display text-xs uppercase tracking-[0.3em] text-gold">{row.label}</dt>
+                    <dd className="flex flex-wrap gap-2">
+                      {row.options.map((o) => (
+                        <span key={o} className="rounded-sm border border-border px-2.5 py-0.5 font-serif text-base capitalize text-foreground/90">
+                          {o}
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-5 text-sm text-muted-foreground">Each host can have two new tales written a day.</p>
+            </div>
           </div>
         </section>
 
