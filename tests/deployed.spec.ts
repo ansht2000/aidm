@@ -62,6 +62,19 @@ test('deployed: two players play a round with the real DM', async ({ users }) =>
   for (const u of [host, guest]) await expect(u.page.getByTestId('chronicle-title')).toBeVisible({ timeout: 120_000 })
   await shot(host, 'd-04-chronicle')
   console.log(`[deployed] chronicle: ${await host.page.getByTestId('chronicle-title').textContent()}`)
+
+  // The guest has the chronicle read aloud (ElevenLabs); the host emails it to themselves.
+  const readBtn = guest.page.getByTestId('chronicle').getByRole('button', { name: 'Read the chronicle aloud' })
+  const [voice] = await Promise.all([guest.page.waitForResponse((r) => r.url().includes('/api/actions/readAloud')), readBtn.click()])
+  const v = await voice.json()
+  expect(v.success, v.error).toBe(true)
+  expect(v.data.audioUrl).toMatch(/^data:audio\//)
+  console.log(`[deployed] read aloud: ${v.data.chars} chars, ${Math.round(v.data.audioUrl.length / 1024)} KB audio`)
+  const [mail] = await Promise.all([host.page.waitForResponse((r) => r.url().includes('/api/actions/emailChronicle')), host.page.getByTestId('email-chronicle').click()])
+  const m = await mail.json()
+  expect(m.success, m.error).toBe(true)
+  await expect(host.page.getByTestId('email-chronicle')).toContainText('Sent to')
+  console.log(`[deployed] email sent to ${m.data.sentTo}`)
 })
 
 test('deployed: the DM writes a new adventure', async ({ users }) => {
