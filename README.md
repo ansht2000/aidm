@@ -12,7 +12,7 @@ nvm use                      # Node 26 (see .nvmrc); npm >= 11.6
 npm install
 npx deepspace auth login
 npx deepspace dev start      # local app + Durable Objects
-npx deepspace test run all   # 15 specs; needs 2 test accounts (npx deepspace test accounts list --usable)
+npx deepspace test run all   # 13 specs; needs 2 test accounts (npx deepspace test accounts list --usable)
 npx deepspace deploy
 ```
 
