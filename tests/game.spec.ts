@@ -72,6 +72,8 @@ test('two players run a session with the scripted DM', async ({ users }) => {
   await expect(guest.page.getByTestId('story-log')).toBeVisible()
 
   // Round 1: both act; the DM asks one of them for an Insight roll.
+  // Before a first action the hand-written adventure suggests a starter.
+  await expect(host.page.getByTestId('action-input')).toHaveAttribute('placeholder', 'I ask the miller when he last saw Elsie…', { timeout: 30_000 })
   await act(host, 'I ask the miller when he last saw Elsie.')
   await expect(guest.page.getByTestId('story-log')).toContainText('I ask the miller', { timeout: 15_000 })
   await act(guest, 'I watch the room for anyone who looks away.')
@@ -91,6 +93,9 @@ test('two players run a session with the scripted DM', async ({ users }) => {
   }
 
   // Round 2: both act; the scripted DM ends the adventure and writes the chronicle.
+  // Having acted once, each player now sees a general reminder with their hero's name.
+  await expect(host.page.getByTestId('action-input')).toHaveAttribute('placeholder', 'Speak, search, sneak, cast: anything Brann would try…', { timeout: 30_000 })
+  await expect(guest.page.getByTestId('action-input')).toHaveAttribute('placeholder', 'Speak, search, sneak, cast: anything Wren would try…', { timeout: 30_000 })
   await act(host, 'We follow the causeway east.')
   await act(guest, 'I scout ahead quietly.')
   for (const u of [host, guest]) {

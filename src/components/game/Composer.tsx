@@ -11,6 +11,7 @@ import { Button, Textarea } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { runAction, useAction } from '@/lib/actions'
 import { MAX_ACTION_CHARS } from '@/game/types'
+import { actionHint } from './actionHint'
 import { fmtClock, useCountdown, useTable } from './TableContext'
 
 function Quill() {
@@ -23,7 +24,7 @@ function Quill() {
 
 export function Composer() {
   const t = useTable()
-  const { game, mine, characters, log, rolls, tableId, isHost, typing, gameUpdatedAt } = t
+  const { game, mine, characters, enemies, log, rolls, tableId, isHost, typing, gameUpdatedAt, module: mod } = t
   const { run, pending } = useAction()
   const [text, setText] = useState('')
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -59,6 +60,15 @@ export function Composer() {
   const typingNames = characters.filter((c) => c.data.userId !== t.userId && typing.has(c.data.userId)).map((c) => c.data.name)
 
   const canAct = !!mine && mine.data.hp > 0 && ((game.phase === 'exploration' && !iActed) || myTurn)
+  const hint = actionHint({
+    moduleId: mod.id,
+    heroName: mine?.data.name ?? '',
+    myTurn,
+    // Typed and sent at least once this session (a pass doesn't count).
+    hasActed: !!mine && log.some((l) => l.data.kind === 'action' && l.data.characterId === mine.recordId && !(l.data.data as { pass?: boolean }).pass),
+    attackName: mine?.data.attacks[0]?.name,
+    foeName: enemies.find((e) => e.data.status === 'active')?.data.name,
+  })
 
   const submit = async (pass: boolean) => {
     const out = await run('submitAction', { tableId, text: pass ? '' : text, pass })
@@ -146,7 +156,7 @@ export function Composer() {
               value={text}
               maxLength={MAX_ACTION_CHARS}
               rows={2}
-              placeholder={myTurn ? 'I swing my longsword at the ghoul…' : 'I ask the miller when he last saw Elsie…'}
+              placeholder={hint}
               className="resize-none bg-background font-serif text-base"
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={(e) => {
