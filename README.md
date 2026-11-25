@@ -2,8 +2,9 @@
 
 An AI Dungeon Master that runs a ~25-minute 5e-compatible adventure for 1–5 players, live in the browser. Built on [DeepSpace](https://docs.deep.space).
 
-- Live app: https://aidm.app.space
-- Design, tradeoffs, verification and status: [WRITEUP.md](WRITEUP.md)
+**See the [writeup](WRITEUP.md) for extra details about what I built, tradeoffs, and what I'd do next.** 
+
+**Live app:** https://aidm.app.space
 
 ## Develop
 
@@ -24,3 +25,4 @@ DEPLOYED_URL=https://aidm.app.space npx playwright test -c tests/playwright.depl
 ```
 
 Local tables can use a scripted DM: open `/home?fakeDm=1` (ignored in production).
+
